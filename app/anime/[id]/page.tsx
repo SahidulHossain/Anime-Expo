@@ -5,6 +5,7 @@ import { getAnimeDetail, getRecentAnime } from "@/lib/anime-api"
 import { PosterImage } from "@/components/poster-image"
 import { WatchlistButton } from "@/components/anime/watchlist-button"
 import { AnimeDetailsTabs } from "@/components/anime/anime-details-tabs"
+import { getFranchiseData } from "@/lib/franchise"
 
 export const revalidate = 600
 
@@ -20,6 +21,7 @@ export default async function AnimeDetailPage({ params }: { params: Promise<{ id
   const anime = await getAnimeDetail(id)
   if (!anime) notFound()
   const related = await getRecentAnime(1, 100).then((data) => data.items.filter((item) => item.id !== anime.id)).catch(() => [])
+  const franchise = await getFranchiseData(anime, related).catch(() => ({ recommended: [], release: [], movies: [], sourceCount: 0 }))
   const firstEpisode = anime.episodes[0]
   const defaultType = anime.isSub > 0 ? "sub" : "dub"
 
@@ -38,7 +40,7 @@ export default async function AnimeDetailPage({ params }: { params: Promise<{ id
             <div className="mt-5 flex flex-wrap gap-2">{firstEpisode && <Link href={`/watch/${anime.id}/${firstEpisode.id}?type=${defaultType}`} className="inline-flex items-center gap-2 rounded-full bg-primary px-5 py-2.5 text-sm font-bold text-primary-foreground"><Play className="size-4 fill-current" />Watch</Link>}<WatchlistButton anime={{ id: anime.id, title: anime.title, poster: anime.poster }} className="px-5 py-2.5" /></div>
           </div>
         </div>
-        <AnimeDetailsTabs anime={anime} related={related} />
+        <AnimeDetailsTabs anime={anime} related={related} franchise={franchise} />
       </div>
     </section>
   </main>
