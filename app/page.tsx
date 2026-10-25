@@ -1,6 +1,6 @@
 import Link from "next/link"
 import { getRecentAnime } from "@/lib/anime-api"
-import { AnimeCardGrid } from "@/components/anime-card"
+import { AnimeCarousel } from "@/components/anime-carousel"
 import { SectionHeading } from "@/components/section-heading"
 import { Hero } from "@/components/home/hero"
 import { ContinueWatching } from "@/components/home/continue-watching"
@@ -46,14 +46,14 @@ export default async function HomePage() {
               </Link>
             }
           />
-          <AnimeCardGrid items={trending} />
+          <AnimeCarousel items={trending} />
         </section>
       )}
 
       {personalized.length > 0 && (
         <section className="mx-auto max-w-7xl px-4 py-8">
           <SectionHeading title="Customized for You" />
-          <AnimeCardGrid items={personalized} />
+          <AnimeCarousel items={personalized} />
         </section>
       )}
 
@@ -66,19 +66,19 @@ export default async function HomePage() {
             </Link>
           }
         />
-        <AnimeCardGrid items={latest} />
+        <AnimeCarousel items={latest} />
       </section>
 
       {movies.length > 0 && (
         <section className="mx-auto max-w-7xl px-4 py-8">
           <SectionHeading title="Top Anime Movies" action={<Link href="/browse?type=Movie" className="text-sm font-medium text-muted-foreground hover:text-primary">See all</Link>} />
-          <AnimeCardGrid items={movies} />
+          <AnimeCarousel items={movies} />
         </section>
       )}
 
       <section className="mx-auto max-w-7xl px-4 py-8">
         <SectionHeading title="Popular Anime" action={<Link href="/browse" className="text-sm font-medium text-muted-foreground hover:text-primary">See all</Link>} />
-        <AnimeCardGrid items={trending.length > 0 ? trending : latest} />
+        <AnimeCarousel items={trending.length > 0 ? trending : latest} />
         <div className="mt-8 flex justify-center">
           <Link
             href="/browse"

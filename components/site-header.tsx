@@ -5,7 +5,7 @@ import { usePathname, useRouter } from "next/navigation"
 import { useState, type FormEvent } from "react"
 import { Search, Bookmark, History as HistoryIcon, Home, Menu, X, LayoutGrid, Send } from "lucide-react"
 import { cn } from "@/lib/utils"
-import { CONTACT_URL } from "@/lib/site"
+import { CONTACT_URL, LOGO_URL } from "@/lib/site"
 
 const NAV = [
   { href: "/", label: "Home", icon: Home },
@@ -28,11 +28,10 @@ export function SiteHeader() {
   }
 
   return (
-    <header className="sticky top-0 z-50 border-b border-border/60 bg-background/80 backdrop-blur-md">
+    <header className="relative z-40 border-b border-border/40 bg-background/35 backdrop-blur-sm">
       <div className="mx-auto flex h-16 max-w-7xl items-center gap-4 px-4">
-        <Link href="/" className="shrink-0 text-xl font-extrabold tracking-tight">
-          <span className="text-primary">ANIME</span>
-          <span className="text-foreground"> EXPO</span>
+        <Link href="/" className="shrink-0" aria-label="AnimExpo home">
+          <img src={LOGO_URL} alt="AnimExpo" className="h-8 w-auto object-contain sm:h-9" />
         </Link>
 
         <nav className="ml-4 hidden items-center gap-1 md:flex">

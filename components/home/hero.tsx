@@ -4,6 +4,7 @@ import Link from "next/link"
 import { useEffect, useState } from "react"
 import { ChevronLeft, ChevronRight, Info, Play, Plus, Star } from "lucide-react"
 import type { AnimeSummary } from "@/lib/types"
+import { LOGO_URL } from "@/lib/site"
 
 export function Hero({ anime, slides = [anime] }: { anime: AnimeSummary; slides?: AnimeSummary[] }) {
   const [index, setIndex] = useState(Math.max(0, slides.findIndex((item) => item.id === anime.id)))
@@ -29,7 +30,7 @@ export function Hero({ anime, slides = [anime] }: { anime: AnimeSummary; slides?
       <div className="mx-auto flex min-h-[min(720px,78dvh)] max-w-7xl flex-col justify-end px-4 pb-14 pt-24 sm:px-6 lg:pb-20">
         <div className="mb-8 max-w-2xl">
           <div className="mb-8 inline-flex items-center rounded-lg border border-white/15 bg-black/30 px-3 py-2 backdrop-blur-md">
-            <span className="text-lg font-black tracking-[-0.12em] text-white">ANIME<span className="text-primary">XPO</span></span>
+            <img src={LOGO_URL} alt="AnimExpo" className="h-8 w-auto object-contain sm:h-10" />
           </div>
           <p className="mb-3 text-xs font-bold uppercase tracking-[0.28em] text-primary">Featured anime</p>
           <h1 className="text-balance text-4xl font-black tracking-tight text-white sm:text-6xl">{current.title}</h1>

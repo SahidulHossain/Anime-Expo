@@ -12,7 +12,7 @@ export default async function GenresPage() {
   const data = await getRecentAnime(1, 100).catch(() => ({ items: [] }))
   const items = data.items
   const cards = GENRES.map((genre) => {
-    const match = items.find((anime) => anime.genres.some((value) => value.toLowerCase() === genre.toLowerCase())) ?? items[GENRES.indexOf(genre) % Math.max(items.length, 1)]
+    const match = items.find((anime) => anime.genres.some((value) => value.toLowerCase() === genre.toLowerCase()))
     return { genre, image: match?.banner || match?.poster || "" }
   })
 

@@ -3,7 +3,7 @@ import type { Metadata, Viewport } from 'next'
 import { Inter } from 'next/font/google'
 import { SiteHeader } from '@/components/site-header'
 import { BottomNav } from '@/components/bottom-nav'
-import { CONTACT_URL } from '@/lib/site'
+import { CONTACT_URL, LOGO_URL } from '@/lib/site'
 import './globals.css'
 
 const inter = Inter({ subsets: ['latin'], variable: '--font-sans' })
@@ -39,10 +39,8 @@ export default function RootLayout({
         <BottomNav />
         <footer className="border-t border-border/60 py-8 text-center text-sm text-muted-foreground">
           <p>
-            <span className="font-bold tracking-tight">
-              <span className="text-primary">ANIME</span> EXPO
-            </span>{' '}
-            — Stream your favorite anime.
+            <img src={LOGO_URL} alt="AnimExpo" className="mx-auto h-8 w-auto object-contain" />
+            <span className="sr-only">AnimExpo — Stream your favorite anime.</span>
           </p>
           <p className="mt-3">
             <a
