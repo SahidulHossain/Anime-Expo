@@ -2,7 +2,7 @@
 
 import Link from "next/link"
 import { useMemo, useState } from "react"
-import { Play, Search } from "lucide-react"
+import { Play, Search, Grid2X2, List, ArrowDownAZ, ArrowUpAZ } from "lucide-react"
 import type { AnimeDetail } from "@/lib/types"
 import { useHistory } from "@/lib/local-store"
 import { cn } from "@/lib/utils"
@@ -10,16 +10,16 @@ import { cn } from "@/lib/utils"
 export function EpisodeList({ anime }: { anime: AnimeDetail }) {
   const { history, hydrated } = useHistory()
   const [filter, setFilter] = useState("")
+  const [ascending, setAscending] = useState(true)
+  const [grid, setGrid] = useState(false)
 
   const lastWatched = hydrated ? history.find((h) => h.animeId === anime.id) : undefined
 
   const episodes = useMemo(() => {
     const q = filter.trim()
-    if (!q) return anime.episodes
-    return anime.episodes.filter(
-      (ep) => String(ep.number).includes(q) || ep.title.toLowerCase().includes(q.toLowerCase()),
-    )
-  }, [anime.episodes, filter])
+    const filtered = q ? anime.episodes.filter((ep) => String(ep.number).includes(q) || ep.title.toLowerCase().includes(q.toLowerCase())) : anime.episodes
+    return [...filtered].sort((a, b) => ascending ? a.number - b.number : b.number - a.number)
+  }, [anime.episodes, filter, ascending])
 
   const defaultType = anime.isSub > 0 ? "sub" : "dub"
 
@@ -39,6 +39,9 @@ export function EpisodeList({ anime }: { anime: AnimeDetail }) {
           Episodes
           <span className="text-sm font-normal text-muted-foreground">({anime.episodes.length})</span>
         </h2>
+        <div className="flex items-center gap-2">
+          <button type="button" onClick={() => setAscending(!ascending)} aria-label={ascending ? "Newest first" : "Oldest first"} className="rounded-full border border-border p-2 text-muted-foreground hover:text-primary">{ascending ? <ArrowDownAZ className="size-4" /> : <ArrowUpAZ className="size-4" />}</button>
+          <button type="button" onClick={() => setGrid(!grid)} aria-label={grid ? "List view" : "Grid view"} className="rounded-full border border-border p-2 text-muted-foreground hover:text-primary">{grid ? <List className="size-4" /> : <Grid2X2 className="size-4" />}</button>
         {anime.episodes.length > 8 && (
           <div className="relative">
             <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
@@ -52,9 +55,10 @@ export function EpisodeList({ anime }: { anime: AnimeDetail }) {
             />
           </div>
         )}
+        </div>
       </div>
 
-      <div className="grid gap-2 sm:grid-cols-2">
+      <div className={cn("grid gap-2", grid ? "grid-cols-2 sm:grid-cols-3" : "sm:grid-cols-2")}>
         {episodes.map((ep) => {
           const isLast = lastWatched?.episodeId === ep.id
           return (

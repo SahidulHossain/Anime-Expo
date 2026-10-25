@@ -84,7 +84,9 @@ async function request(path: string, params?: Record<string, string | number | u
   })
 
   if (!res.ok) {
-    throw new Error(`Upstream request failed with status ${res.status}`)
+    const error = new Error(`Upstream request failed with status ${res.status}`) as Error & { code?: string }
+    if (res.status === 404) error.code = "not_found"
+    throw error
   }
 
   const json = await res.json()

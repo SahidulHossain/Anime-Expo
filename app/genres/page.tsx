@@ -7,8 +7,8 @@ export const revalidate = 600
 export const metadata: Metadata = { title: "Genres", description: "Browse anime by genre on AnimExpo." }
 
 const GENRES = [
-  ["Action", "https://hebbkx1anhila5yf.public.blob.vercel-storage.com/SmartSelect_20261025_212040_ChatGPT-5ouNl7Q2wG8UhUzjT5YHYTzLF1w3nd.jpg"],
-  ["Adventure", "https://hebbkx1anhila5yf.public.blob.vercel-storage.com/SmartSelect_20261025_212058_ChatGPT-T5S0RJHACWBD44JngYZNerwt0bsVNU.jpg"],
+  ["Action", "https://hebbkx1anhila5yf.public.blob.vercel-storage.com/SmartSelect_20261025_212040_ChatGPT-PimIw6kvwHkbdWm2ZoqHwkXsjqDyjN.jpg"],
+  ["Adventure", "https://hebbkx1anhila5yf.public.blob.vercel-storage.com/SmartSelect_20261025_212058_ChatGPT-eRGPh4A8XJZbOmUvAKFxJa05RY7zsy.jpg"],
   ["Comedy", "https://hebbkx1anhila5yf.public.blob.vercel-storage.com/SmartSelect_20261025_212112_ChatGPT-2k3wjsJEq1smb1JRzK9Atqpwu5zTkw.jpg"],
   ["Drama", "https://hebbkx1anhila5yf.public.blob.vercel-storage.com/SmartSelect_20261025_212138_ChatGPT-DCmwSG7ZWCVL9tJcngvAse76mzV22f.jpg"],
   ["Fantasy", "https://hebbkx1anhila5yf.public.blob.vercel-storage.com/SmartSelect_20261025_212154_ChatGPT-pmUUWP2XK1wQKLmu5b4co8Lcmr9vOv.jpg"],
