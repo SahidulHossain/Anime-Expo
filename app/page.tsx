@@ -11,15 +11,16 @@ export default async function HomePage() {
   const recent = await getRecentAnime(1, 36)
   const items = recent.items
 
-  const featured = items.find((a) => a.banner) ?? items[0]
-  const slides = items.filter((a) => a.banner).slice(0, 6)
-  const trending = [...items]
+  const uniqueItems = Array.from(new Map(items.map((item) => [item.id, item])).values())
+  const featured = uniqueItems.find((a) => a.banner) ?? uniqueItems[0]
+  const slides = uniqueItems.filter((a) => a.banner).slice(0, 6)
+  const trending = [...uniqueItems]
     .filter((a) => a.score)
     .sort((a, b) => Number(b.score) - Number(a.score))
     .slice(0, 12)
-  const latest = items.slice(0, 18)
-  const personalized = items.filter((a) => a.genres.some((genre) => featured?.genres.includes(genre))).slice(0, 12)
-  const movies = items.filter((a) => a.type?.toLowerCase().includes("movie")).slice(0, 12)
+  const latest = uniqueItems.slice(0, 18)
+  const personalized = uniqueItems.filter((a) => a.genres.some((genre) => featured?.genres.includes(genre))).slice(0, 12)
+  const movies = uniqueItems.filter((a) => a.type?.trim().toLowerCase() === "movie").slice(0, 12)
 
   if (items.length === 0) {
     return (

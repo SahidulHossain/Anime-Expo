@@ -4,7 +4,6 @@ import Link from "next/link"
 import { useEffect, useState } from "react"
 import { ChevronLeft, ChevronRight, Info, Play, Plus, Star } from "lucide-react"
 import type { AnimeSummary } from "@/lib/types"
-import { LOGO_URL } from "@/lib/site"
 
 export function Hero({ anime, slides = [anime] }: { anime: AnimeSummary; slides?: AnimeSummary[] }) {
   const [index, setIndex] = useState(Math.max(0, slides.findIndex((item) => item.id === anime.id)))
@@ -29,11 +28,8 @@ export function Hero({ anime, slides = [anime] }: { anime: AnimeSummary; slides?
 
       <div className="mx-auto flex min-h-[min(720px,78dvh)] max-w-7xl flex-col justify-end px-4 pb-14 pt-24 sm:px-6 lg:pb-20">
         <div className="mb-8 max-w-2xl">
-          <div className="mb-8 inline-flex items-center rounded-lg border border-white/15 bg-black/30 px-3 py-2 backdrop-blur-md">
-            <img src={LOGO_URL} alt="AnimExpo" className="h-8 w-auto object-contain sm:h-10" />
-          </div>
-          <p className="mb-3 text-xs font-bold uppercase tracking-[0.28em] text-primary">Featured anime</p>
-          <h1 className="text-balance text-4xl font-black tracking-tight text-white sm:text-6xl">{current.title}</h1>
+          <p className="mb-2 text-xs font-bold uppercase tracking-[0.28em] text-primary">Featured anime</p>
+          <h1 className="line-clamp-4 text-balance text-3xl font-black leading-tight tracking-tight text-white sm:text-6xl">{current.title}</h1>
           <div className="mt-4 flex flex-wrap items-center gap-3 text-sm text-white/70">
             {current.score && <span className="inline-flex items-center gap-1 font-bold text-white"><Star className="size-4 fill-primary text-primary" />{current.score}</span>}
             {current.year && <span>{current.year}</span>}
@@ -42,9 +38,9 @@ export function Hero({ anime, slides = [anime] }: { anime: AnimeSummary; slides?
           </div>
           {current.genres.length > 0 && <p className="mt-3 text-sm text-white/70">{current.genres.slice(0, 4).join("  •  ")}</p>}
           {current.description && <p className="mt-4 line-clamp-3 max-w-xl text-sm leading-relaxed text-white/65 sm:text-base">{current.description}</p>}
-          <div className="mt-7 flex flex-wrap gap-3">
-            <Link href={`/anime/${current.id}`} className="inline-flex items-center gap-2 rounded-xl bg-primary px-5 py-3 text-sm font-bold text-primary-foreground transition-transform hover:-translate-y-0.5"><Play className="size-4 fill-current" />Watch now</Link>
-            <Link href={`/anime/${current.id}`} className="inline-flex items-center gap-2 rounded-xl border border-white/20 bg-white/10 px-5 py-3 text-sm font-bold text-white backdrop-blur-sm transition-colors hover:bg-white/15"><Plus className="size-4" />My list</Link>
+          <div className="mt-5 flex flex-wrap gap-2 sm:mt-7 sm:gap-3">
+            <Link href={`/anime/${current.id}`} className="inline-flex items-center gap-2 rounded-xl bg-primary px-4 py-2.5 text-sm font-bold text-primary-foreground transition-transform hover:-translate-y-0.5"><Play className="size-4 fill-current" />Watch now</Link>
+            <Link href={`/anime/${current.id}`} className="inline-flex items-center gap-2 rounded-xl border border-white/20 bg-white/10 px-4 py-2.5 text-sm font-bold text-white backdrop-blur-sm transition-colors hover:bg-white/15"><Plus className="size-4" />My list</Link>
             <Link href={`/anime/${current.id}`} aria-label="View details" className="inline-flex items-center gap-2 rounded-xl border border-white/15 px-4 py-3 text-sm font-semibold text-white/80 hover:text-white"><Info className="size-4" />Details</Link>
           </div>
         </div>
