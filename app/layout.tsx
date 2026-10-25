@@ -35,7 +35,7 @@ export default function RootLayout({
     <html lang="en" className="dark">
       <body className={`${inter.variable} font-sans antialiased`}>
         <SiteHeader />
-        <div className="min-h-[calc(100dvh-4rem)] pb-24">{children}</div>
+        <div className="min-h-[calc(100dvh-4rem)] overflow-x-clip pb-28">{children}</div>
         <BottomNav />
         <footer className="border-t border-border/60 py-8 text-center text-sm text-muted-foreground">
           <p>

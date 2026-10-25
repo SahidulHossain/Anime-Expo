@@ -5,6 +5,8 @@ import { Info } from "lucide-react"
 import type { AnimeDetail, AnimeSummary } from "@/lib/types"
 import { EpisodeList } from "./episode-list"
 import { AnimeCarousel } from "@/components/anime-carousel"
+import { PosterImage } from "@/components/poster-image"
+import Link from "next/link"
 import { cn } from "@/lib/utils"
 
 const tabs = ["Home", "Episodes", "Related"] as const
@@ -41,7 +43,8 @@ export function AnimeDetailsTabs({ anime, related }: { anime: AnimeDetail; relat
         </div>}
         {active === "Episodes" && <EpisodeList anime={anime} />}
         {active === "Related" && <div className="space-y-8">
-          {seasons.length > 0 && <RelatedSection title="Seasons" items={seasons.slice(0, 12)} />}
+          {seasons.length > 0 && <WatchOrder anime={anime} items={seasons.slice(0, 12)} />}
+          {seasons.filter((item) => item.type?.toLowerCase() === "movie").length > 0 && <RelatedSection title="Franchise Movies" items={seasons.filter((item) => item.type?.toLowerCase() === "movie")} />}
           {similar.length > 0 && <RelatedSection title="More Like This" items={similar} />}
           {seasons.length === 0 && similar.length === 0 && <EmptyState />}
         </div>}
@@ -52,4 +55,7 @@ export function AnimeDetailsTabs({ anime, related }: { anime: AnimeDetail; relat
 
 function InfoRow({ label, value }: { label: string; value: string }) { return <div><dt className="text-xs text-muted-foreground">{label}</dt><dd className="mt-1 font-medium text-white">{value}</dd></div> }
 function RelatedSection({ title, items }: { title: string; items: AnimeSummary[] }) { return <div><h2 className="mb-3 text-lg font-bold">{title}</h2><AnimeCarousel items={items} /></div> }
+function WatchOrder({ anime, items }: { anime: AnimeDetail; items: AnimeSummary[] }) {
+  const entries = [{ ...anime, type: anime.type || "Current title" }, ...items.filter((item) => item.id !== anime.id)]
+  return <div><div className="mb-3 flex items-end justify-between gap-3"><div><h2 className="text-lg font-bold">Watch Order</h2><p className="text-xs text-muted-foreground">Available franchise entries in release order</p></div></div><div className="grid gap-2 sm:grid-cols-2">{entries.map((item, index) => <Link key={item.id} href={`/anime/${item.id}`} className={cn("flex items-center gap-3 rounded-xl border p-3 transition-colors hover:border-primary/50", item.id === anime.id ? "border-primary/60 bg-primary/5" : "border-white/10 bg-white/[0.03]")}><span className="flex size-8 shrink-0 items-center justify-center rounded-full bg-secondary text-xs font-bold">{index + 1}</span><PosterImage src={item.poster} alt="" className="size-12 shrink-0 rounded-lg" /><span className="min-w-0"><span className="block truncate text-sm font-semibold">{item.title}</span><span className="text-xs text-muted-foreground">{item.type || "Title"}{item.year ? ` · ${item.year}` : ""}</span>{item.id === anime.id && <span className="ml-2 text-[10px] font-bold uppercase tracking-wide text-primary">You are here</span>}</span></Link>)}</div></div> }
 function EmptyState() { return <div className="rounded-2xl border border-white/10 p-8 text-center text-sm text-muted-foreground">No related anime is available.</div> }

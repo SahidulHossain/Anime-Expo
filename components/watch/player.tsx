@@ -15,7 +15,7 @@ import {
   RefreshCw,
 } from "lucide-react"
 import type { AnimeDetail, Episode } from "@/lib/types"
-import { recordHistory, useWatchlist } from "@/lib/local-store"
+import { recordHistory, useHistory, useWatchlist } from "@/lib/local-store"
 import { cn } from "@/lib/utils"
 
 type StreamType = "sub" | "dub"
@@ -25,6 +25,7 @@ export function Player({ anime, episode }: { anime: AnimeDetail; episode: Episod
   const params = useSearchParams()
   const containerRef = useRef<HTMLDivElement>(null)
   const { isSaved, toggle, hydrated } = useWatchlist()
+  const { history } = useHistory()
 
   const available: StreamType[] = useMemo(() => {
     const list: StreamType[] = []
@@ -258,34 +259,16 @@ export function Player({ anime, episode }: { anime: AnimeDetail; episode: Episod
               </div>
             </div>
             <div className="max-h-[420px] overflow-y-auto p-2 lg:max-h-[calc(100dvh-16rem)] [scrollbar-width:thin]">
-              <div className="grid gap-1">
+              <div className="grid grid-cols-4 gap-2 min-[380px]:grid-cols-5 lg:grid-cols-4">
                 {filteredEpisodes.map((ep) => {
                   const active = ep.id === episode.id
+                  const watched = history.some((item) => item.animeId === anime.id && item.episodeId === ep.id)
                   return (
-                    <button
-                      key={ep.id}
-                      type="button"
-                      onClick={() => goToEpisode(ep)}
-                      className={cn(
-                        "flex items-center gap-3 rounded-md p-2 text-left transition-colors",
-                        active
-                          ? "bg-primary/10 text-primary"
-                          : "text-foreground hover:bg-secondary/60",
-                      )}
-                    >
-                      <span
-                        className={cn(
-                          "inline-flex size-8 shrink-0 items-center justify-center rounded-md text-xs font-bold",
-                          active ? "bg-primary text-primary-foreground" : "bg-secondary text-foreground",
-                        )}
-                      >
-                        {ep.number || "?"}
-                      </span>
-                      <span className="line-clamp-1 text-sm">{ep.title}</span>
-                    </button>
+                    <button key={ep.id} type="button" onClick={() => goToEpisode(ep)} title={ep.title} aria-label={`Episode ${ep.number}: ${ep.title}`} className={cn("relative flex min-h-12 items-center justify-center rounded-lg border text-sm font-bold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary", active ? "border-primary bg-primary text-primary-foreground" : "border-border/60 bg-secondary/40 text-foreground hover:border-primary/50")}>{ep.number || "?"}{watched && !active && <span className="absolute bottom-1 left-1/2 h-0.5 w-5 -translate-x-1/2 rounded-full bg-primary" aria-label="Watched" />}</button>
                   )
                 })}
               </div>
+              {filteredEpisodes.length === 0 && <p className="p-6 text-center text-sm text-muted-foreground">No episodes match your search.</p>}
             </div>
           </div>
         </aside>
