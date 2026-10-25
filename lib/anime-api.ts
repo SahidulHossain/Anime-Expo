@@ -22,6 +22,8 @@ type RawAnime = {
   episodes?: string
   rating?: string
   duration?: string
+  mal_id?: string | number
+  ani_id?: string | number
   is_sub?: number
   is_dub?: number
   terms_by_type?: Record<string, string[] | undefined>
@@ -50,6 +52,8 @@ function mapAnime(raw: RawAnime): AnimeSummary {
     rating: raw.rating || undefined,
     type: type || undefined,
     duration: raw.duration || undefined,
+    malId: raw.mal_id ? String(raw.mal_id) : undefined,
+    aniListId: raw.ani_id ? String(raw.ani_id) : undefined,
     isSub: raw.is_sub ?? 0,
     isDub: raw.is_dub ?? 0,
     genres: Array.isArray(genres) ? genres : [],

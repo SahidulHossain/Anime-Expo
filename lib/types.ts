@@ -11,6 +11,8 @@ export interface AnimeSummary {
   rating?: string
   type?: string
   duration?: string
+  malId?: string
+  aniListId?: string
   isSub: number
   isDub: number
   genres: string[]

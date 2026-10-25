@@ -11,6 +11,8 @@ import {
   Bookmark,
   BookmarkCheck,
   Search,
+  Download,
+  RefreshCw,
 } from "lucide-react"
 import type { AnimeDetail, Episode } from "@/lib/types"
 import { recordHistory, useWatchlist } from "@/lib/local-store"
@@ -33,6 +35,8 @@ export function Player({ anime, episode }: { anime: AnimeDetail; episode: Episod
 
   const requested = (params.get("type") as StreamType) || available[0]
   const [type, setType] = useState<StreamType>(available.includes(requested) ? requested : available[0])
+  const [server, setServer] = useState<1 | 2>(1)
+  const [loadError, setLoadError] = useState(false)
   const [autoNext, setAutoNext] = useState(false)
   const [filter, setFilter] = useState("")
 
@@ -40,7 +44,19 @@ export function Player({ anime, episode }: { anime: AnimeDetail; episode: Episod
   const prev = index > 0 ? anime.episodes[index - 1] : undefined
   const next = index >= 0 && index < anime.episodes.length - 1 ? anime.episodes[index + 1] : undefined
 
-  const streamUrl = (type === "dub" ? episode.dub : episode.sub) || episode.sub || episode.dub
+  const serverOneUrl = (type === "dub" ? episode.dub : episode.sub) || episode.sub || episode.dub
+  const aniEmbedUrl = anime.aniListId
+    ? `https://aniembed.se/e/${encodeURIComponent(anime.aniListId)}/${encodeURIComponent(String(episode.number))}?lang=${type}&autoplay=0`
+    : undefined
+  const streamUrl = server === 2 ? aniEmbedUrl : serverOneUrl
+  const downloadUrl = anime.malId
+    ? `https://zokoanime.video/download/mal/${encodeURIComponent(anime.malId)}/${encodeURIComponent(String(episode.number))}/${type}`
+    : undefined
+  const canUseServerTwo = Boolean(anime.aniListId)
+
+  useEffect(() => {
+    setLoadError(false)
+  }, [streamUrl])
 
   // Record watch history (episode-level resume) whenever the episode/type changes.
   useEffect(() => {
@@ -100,18 +116,24 @@ export function Player({ anime, episode }: { anime: AnimeDetail; episode: Episod
           {/* Player */}
           <div ref={containerRef} className="overflow-hidden rounded-xl border border-border/60 bg-black">
             <div className="relative aspect-video w-full">
-              {streamUrl ? (
+              {streamUrl && !loadError ? (
                 <iframe
-                  key={`${episode.id}-${type}`}
+                  key={`${episode.id}-${type}-${server}`}
                   src={streamUrl}
                   title={`${anime.title} Episode ${episode.number}`}
                   allow="autoplay; encrypted-media; picture-in-picture; fullscreen"
                   allowFullScreen
+                  onError={() => setLoadError(true)}
                   className="absolute inset-0 h-full w-full border-0"
                 />
               ) : (
-                <div className="absolute inset-0 flex items-center justify-center text-sm text-muted-foreground">
-                  This episode is not available to stream.
+                <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 px-6 text-center text-sm text-muted-foreground">
+                  <p>{loadError ? "This stream could not be loaded." : "This episode is not available to stream."}</p>
+                  {loadError && (
+                    <button type="button" onClick={() => setLoadError(false)} className="inline-flex items-center gap-2 rounded-md bg-primary px-3 py-2 text-xs font-semibold text-primary-foreground">
+                      <RefreshCw className="size-3.5" /> Retry
+                    </button>
+                  )}
                 </div>
               )}
             </div>
@@ -148,27 +170,22 @@ export function Player({ anime, episode }: { anime: AnimeDetail; episode: Episod
 
           {/* Toolbar: server select, fullscreen, auto-next */}
           <div className="mt-4 flex flex-wrap items-center gap-3 rounded-lg border border-border/60 bg-card p-3">
-            {available.length > 0 && (
-              <div className="flex items-center gap-2">
-                <span className="text-xs font-medium text-muted-foreground">Server</span>
-                <div className="flex overflow-hidden rounded-md border border-border">
-                  {available.map((t) => (
-                    <button
-                      key={t}
-                      type="button"
-                      onClick={() => setType(t)}
-                      className={cn(
-                        "px-3 py-1.5 text-xs font-bold uppercase transition-colors",
-                        type === t
-                          ? "bg-primary text-primary-foreground"
-                          : "bg-secondary/50 text-muted-foreground hover:text-foreground",
-                      )}
-                    >
-                      {t}
-                    </button>
-                  ))}
+            <div className="grid w-full gap-2 sm:flex sm:w-auto sm:items-center">
+              {available.map((t) => (
+                <div key={t} className="flex items-center gap-2">
+                  <span className="w-8 text-xs font-bold uppercase text-muted-foreground">{t}</span>
+                  <div className="flex min-w-0 flex-1 overflow-hidden rounded-md border border-border">
+                    <button type="button" onClick={() => { setType(t); setServer(1) }} className={cn("flex-1 px-2.5 py-1.5 text-xs font-bold transition-colors", type === t && server === 1 ? "bg-primary text-primary-foreground" : "bg-secondary/50 text-muted-foreground hover:text-foreground")}>Server 1 · FHD</button>
+                    {canUseServerTwo && <button type="button" onClick={() => { setType(t); setServer(2) }} className={cn("flex-1 px-2.5 py-1.5 text-xs font-bold transition-colors", type === t && server === 2 ? "bg-primary text-primary-foreground" : "bg-secondary/50 text-muted-foreground hover:text-foreground")}>Server 2 · FHD · 4K</button>}
+                  </div>
                 </div>
-              </div>
+              ))}
+            </div>
+
+            {downloadUrl && (
+              <a href={downloadUrl} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1.5 rounded-md border border-border bg-secondary/50 px-3 py-1.5 text-xs font-medium transition-colors hover:border-primary/60 hover:text-primary">
+                <Download className="size-4" /> Download {type.toUpperCase()}
+              </a>
             )}
 
             <label className="flex items-center gap-2 text-xs font-medium text-muted-foreground">
