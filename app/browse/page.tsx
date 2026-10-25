@@ -1,5 +1,5 @@
 import type { Metadata } from "next"
-import { getRecentAnime } from "@/lib/anime-api"
+import { getRecentAnime, searchAnime } from "@/lib/anime-api"
 import { AnimeCardGrid } from "@/components/anime-card"
 import { PaginationNav } from "@/components/pagination-nav"
 
@@ -12,13 +12,14 @@ export const metadata: Metadata = {
 
 const PER_PAGE = 36
 
-export default async function BrowsePage({ searchParams }: { searchParams: Promise<{ page?: string }> }) {
-  const { page: pageParam } = await searchParams
+export default async function BrowsePage({ searchParams }: { searchParams: Promise<{ page?: string; genre?: string; type?: string }> }) {
+  const { page: pageParam, genre, type } = await searchParams
   const page = Math.max(1, Number.parseInt(pageParam ?? "1", 10) || 1)
+  const filter = genre?.trim() || type?.trim()
 
   let data: Awaited<ReturnType<typeof getRecentAnime>> | null = null
   try {
-    data = await getRecentAnime(page, PER_PAGE)
+    data = filter ? await searchAnime(filter, page, PER_PAGE) : await getRecentAnime(page, PER_PAGE)
   } catch {
     data = null
   }
@@ -27,7 +28,7 @@ export default async function BrowsePage({ searchParams }: { searchParams: Promi
     <main className="mx-auto max-w-7xl px-4 py-8">
       <div className="mb-6 flex flex-wrap items-end justify-between gap-2">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight">Browse All Anime</h1>
+          <h1 className="text-2xl font-bold tracking-tight">{genre ? `${genre} Anime` : type ? `${type} Anime` : "Browse All Anime"}</h1>
           {data && (
             <p className="text-sm text-muted-foreground">
               {data.total.toLocaleString()} titles &middot; Page {data.page} of {data.totalPages.toLocaleString()}
@@ -48,7 +49,7 @@ export default async function BrowsePage({ searchParams }: { searchParams: Promi
       ) : (
         <>
           <AnimeCardGrid items={data.items} />
-          <PaginationNav page={data.page} totalPages={data.totalPages} hrefFor={(p) => `/browse?page=${p}`} />
+          <PaginationNav page={data.page} totalPages={data.totalPages} hrefFor={(p) => `/browse?page=${p}${genre ? `&genre=${encodeURIComponent(genre)}` : type ? `&type=${encodeURIComponent(type)}` : ""}`} />
         </>
       )}
     </main>

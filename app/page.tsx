@@ -12,11 +12,14 @@ export default async function HomePage() {
   const items = recent.items
 
   const featured = items.find((a) => a.banner) ?? items[0]
+  const slides = items.filter((a) => a.banner).slice(0, 6)
   const trending = [...items]
     .filter((a) => a.score)
     .sort((a, b) => Number(b.score) - Number(a.score))
     .slice(0, 12)
   const latest = items.slice(0, 18)
+  const personalized = items.filter((a) => a.genres.some((genre) => featured?.genres.includes(genre))).slice(0, 12)
+  const movies = items.filter((a) => a.type?.toLowerCase().includes("movie")).slice(0, 12)
 
   if (items.length === 0) {
     return (
@@ -29,7 +32,7 @@ export default async function HomePage() {
 
   return (
     <main>
-      {featured && <Hero anime={featured} />}
+      {featured && <Hero anime={featured} slides={slides.length > 0 ? slides : [featured]} />}
 
       <ContinueWatching />
 
@@ -47,9 +50,16 @@ export default async function HomePage() {
         </section>
       )}
 
+      {personalized.length > 0 && (
+        <section className="mx-auto max-w-7xl px-4 py-8">
+          <SectionHeading title="Customized for You" />
+          <AnimeCardGrid items={personalized} />
+        </section>
+      )}
+
       <section className="mx-auto max-w-7xl px-4 py-8">
         <SectionHeading
-          title="Latest Episodes"
+          title="New Airing"
           action={
             <Link href="/browse?page=2" className="text-sm font-medium text-muted-foreground hover:text-primary">
               View more
@@ -57,6 +67,18 @@ export default async function HomePage() {
           }
         />
         <AnimeCardGrid items={latest} />
+      </section>
+
+      {movies.length > 0 && (
+        <section className="mx-auto max-w-7xl px-4 py-8">
+          <SectionHeading title="Top Anime Movies" action={<Link href="/browse?type=Movie" className="text-sm font-medium text-muted-foreground hover:text-primary">See all</Link>} />
+          <AnimeCardGrid items={movies} />
+        </section>
+      )}
+
+      <section className="mx-auto max-w-7xl px-4 py-8">
+        <SectionHeading title="Popular Anime" action={<Link href="/browse" className="text-sm font-medium text-muted-foreground hover:text-primary">See all</Link>} />
+        <AnimeCardGrid items={trending.length > 0 ? trending : latest} />
         <div className="mt-8 flex justify-center">
           <Link
             href="/browse"

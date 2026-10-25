@@ -136,7 +136,7 @@ function toIndexed(raw: RawAnime): IndexedAnime {
   return {
     anime,
     title,
-    haystack: normalize([raw.title, raw.alternative, raw.native, raw.titles].filter(Boolean).join(" ")),
+    haystack: normalize([raw.title, raw.alternative, raw.native, raw.titles, ...(raw.terms_by_type?.genre ?? [])].filter(Boolean).join(" ")),
   }
 }
 
