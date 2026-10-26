@@ -1,6 +1,5 @@
 import "server-only"
 
-import { searchAnime } from "@/lib/anime-api"
 import type { AnimeSummary } from "@/lib/types"
 
 export const TOP_RATED_TITLES = [
@@ -16,17 +15,15 @@ const ALIASES: Record<string, string[]> = {
   "My Teen Romantic Comedy SNAFU": ["Oregairu", "Yahari Ore no Seishun Love Comedy wa Machigatteiru"],
 }
 
-export async function getTopRatedPicks(): Promise<AnimeSummary[]> {
-  const results = await Promise.all(TOP_RATED_TITLES.map(async (title) => {
-    const queries = [title, ...(ALIASES[title] ?? [])]
-    for (const query of queries) {
-      const found = await searchAnime(query, 1, 5).catch(() => null)
-      const exact = found?.items.find((item) => item.title.toLowerCase() === query.toLowerCase()) ?? found?.items[0]
-      if (exact) return exact
-    }
-    return null
-  }))
-  return Array.from(new Map(results.filter((item): item is AnimeSummary => Boolean(item)).map((item) => [item.id, item])).values())
+function normalizeTitle(title: string) {
+  return title.toLowerCase().replace(/[^a-z0-9]/g, "")
+}
+
+export function getTopRatedPicks(items: AnimeSummary[]): AnimeSummary[] {
+  const aliases = Object.entries(ALIASES).flatMap(([title, names]) => names.map((name) => [normalizeTitle(name), normalizeTitle(title)] as const))
+  const requested = new Map(TOP_RATED_TITLES.map((title, index) => [normalizeTitle(title), index]))
+  for (const [alias, canonical] of aliases) requested.set(alias, requested.get(canonical) ?? 0)
+  return Array.from(new Map(items.filter((item) => requested.has(normalizeTitle(item.title))).sort((a, b) => (requested.get(normalizeTitle(a.title)) ?? 999) - (requested.get(normalizeTitle(b.title)) ?? 999)).map((item) => [item.id, item])).values())
 }
 
 export function getUpcoming(items: AnimeSummary[]): AnimeSummary[] {

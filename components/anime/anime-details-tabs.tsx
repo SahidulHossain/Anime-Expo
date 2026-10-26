@@ -13,8 +13,14 @@ export function AnimeDetailsTabs({ anime, related }: { anime: AnimeDetail; relat
   const [active, setActive] = useState<(typeof tabs)[number]>("Home")
   const [expanded, setExpanded] = useState(false)
   const franchiseName = anime.title.split(/\s+[—–:-]\s+|\s+Season\s+\d+/i)[0].trim()
-  const seasons = related.filter((item) => item.title.toLowerCase().startsWith(franchiseName.toLowerCase()) && item.type?.toLowerCase() !== "movie")
-  const movies = related.filter((item) => item.title.toLowerCase().startsWith(franchiseName.toLowerCase()) && ["movie", "film"].includes(item.type?.trim().toLowerCase() || ""))
+  const matchesFranchise = (item: AnimeSummary) => {
+    const title = item.title.trim().toLowerCase()
+    const base = franchiseName.toLowerCase()
+    const suffix = title.slice(base.length).trim()
+    return title === base || (title.startsWith(base) && /^(season|part|cour|movie|film|ova|special|\d)/i.test(suffix))
+  }
+  const seasons = related.filter((item) => matchesFranchise(item) && !["movie", "film"].includes(item.type?.trim().toLowerCase() || ""))
+  const movies = related.filter((item) => matchesFranchise(item) && ["movie", "film"].includes(item.type?.trim().toLowerCase() || ""))
   const similar = related.filter((item) => item.id !== anime.id && item.genres.some((genre) => anime.genres.includes(genre))).sort((a, b) => b.genres.filter((g) => anime.genres.includes(g)).length - a.genres.filter((g) => anime.genres.includes(g)).length || Number(b.score || 0) - Number(a.score || 0)).slice(0, 12)
   const description = anime.description ?? "No synopsis is available for this title yet."
 
@@ -54,5 +60,5 @@ export function AnimeDetailsTabs({ anime, related }: { anime: AnimeDetail; relat
 }
 
 function InfoRow({ label, value }: { label: string; value: string }) { return <div><dt className="text-xs text-muted-foreground">{label}</dt><dd className="mt-1 font-medium text-white">{value}</dd></div> }
-function RelatedSection({ title, items }: { title: string; items: AnimeSummary[] }) { return <div><h2 className="mb-3 text-lg font-bold">{title}</h2><AnimeCarousel items={items} /></div> }
+function RelatedSection({ title, items }: { title: string; items: AnimeSummary[] }) { return <div><h2 className="mb-3 text-lg font-bold">{title}</h2>{items.length > 0 ? <AnimeCarousel items={items} /> : <p className="rounded-xl border border-white/10 px-4 py-6 text-sm text-muted-foreground">No verified titles available.</p>}</div> }
 function EmptyState() { return <div className="rounded-2xl border border-white/10 p-8 text-center text-sm text-muted-foreground">No related anime is available.</div> }
