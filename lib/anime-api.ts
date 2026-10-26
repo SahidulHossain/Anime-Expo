@@ -43,6 +43,8 @@ function mapAnime(raw: RawAnime): AnimeSummary {
   const type = raw.terms_by_type?.type?.[0]
   return {
     id: raw.id,
+    animExpoId: raw.id,
+    anikotoSeriesId: String(raw.id),
     title: raw.title ?? "Untitled",
     poster: raw.poster ?? "",
     banner: raw.background_image || undefined,
@@ -67,6 +69,7 @@ function mapEpisode(raw: RawEpisode): Episode {
     id: raw.id,
     title: raw.title || `Episode ${raw.number ?? ""}`.trim(),
     number: raw.number ?? 0,
+    episodeNumber: raw.number ?? undefined,
     episodeEmbedId: raw.episode_embed_id || undefined,
     sub: raw.embed_url?.sub || undefined,
     dub: raw.embed_url?.dub || undefined,

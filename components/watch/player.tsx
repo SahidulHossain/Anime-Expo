@@ -29,8 +29,8 @@ export function Player({ anime, episode }: { anime: AnimeDetail; episode: Episod
 
   const available: StreamType[] = useMemo(() => {
     const list: StreamType[] = []
-    if (episode.sub || anime.isSub > 0) list.push("sub")
-    if (episode.dub || anime.isDub > 0) list.push("dub")
+    if (episode.sub) list.push("sub")
+    if (episode.dub) list.push("dub")
     return list.length ? list : ["sub"]
   }, [episode, anime])
 
@@ -56,21 +56,21 @@ export function Player({ anime, episode }: { anime: AnimeDetail; episode: Episod
   const prev = index > 0 ? anime.episodes[index - 1] : undefined
   const next = index >= 0 && index < anime.episodes.length - 1 ? anime.episodes[index + 1] : undefined
 
-  const serverOneUrl = episode.episodeEmbedId
-    ? `https://megaplay.buzz/stream/s-2/${encodeURIComponent(episode.episodeEmbedId)}/${type}`
-    : (type === "dub" ? episode.dub : episode.sub) || episode.sub || episode.dub
+  const serverOneUrl = type === "dub" ? episode.dub : episode.sub
+
   const aniEmbedUrl = anime.aniListId
     ? `https://aniembed.se/e/${encodeURIComponent(anime.aniListId)}/${encodeURIComponent(String(episode.number))}?lang=${type}&autoplay=0`
     : undefined
-  const anixoEmbedUrl = (anime.aniListId || anime.malId)
-    ? `https://anixo.buzz/embed/${anime.aniListId ? "ani" : "mal"}/${encodeURIComponent(String(anime.aniListId || anime.malId))}/${encodeURIComponent(String(episode.number))}?track=${type}&server=1&autoSkipIntro=1&autoSkipOutro=1`
+  const anixoEmbedUrl = anime.aniListId && episode.episodeNumber
+    ? `https://anixo.buzz/embed/ani/${encodeURIComponent(anime.aniListId)}/${encodeURIComponent(String(episode.episodeNumber))}?player=custom&track=${type}`
     : undefined
   const streamUrl = server === 2 ? aniEmbedUrl : server === 3 ? anixoEmbedUrl : serverOneUrl
   const downloadUrl = anime.malId
     ? `https://zokoanime.video/download/mal/${encodeURIComponent(anime.malId)}/${encodeURIComponent(String(episode.number))}/${type}`
     : undefined
+  const canUseServerOne = Boolean(serverOneUrl)
   const canUseServerTwo = Boolean(anime.aniListId)
-  const canUseServerThree = Boolean(anime.aniListId || anime.malId)
+  const canUseServerThree = Boolean(anime.aniListId && episode.episodeNumber)
 
   useEffect(() => {
     setLoadError(false)
@@ -193,7 +193,7 @@ export function Player({ anime, episode }: { anime: AnimeDetail; episode: Episod
                 <div key={t} className="flex items-center gap-2">
                   <span className="w-8 text-xs font-bold uppercase text-muted-foreground">{t}</span>
                   <div className="flex min-w-0 flex-1 overflow-hidden rounded-md border border-border">
-                    <button type="button" onClick={() => { setType(t); setServer(1) }} className={cn("flex-1 px-2.5 py-1.5 text-xs font-bold transition-colors", type === t && server === 1 ? "bg-primary text-primary-foreground" : "bg-secondary/50 text-muted-foreground hover:text-foreground")}>Server 1</button>
+                    {canUseServerOne && <button type="button" onClick={() => { setType(t); setServer(1) }} className={cn("flex-1 px-2.5 py-1.5 text-xs font-bold transition-colors", type === t && server === 1 ? "bg-primary text-primary-foreground" : "bg-secondary/50 text-muted-foreground hover:text-foreground")}>Server 1</button>}
                     {canUseServerTwo && <button type="button" onClick={() => { setType(t); setServer(2) }} className={cn("flex-1 px-2.5 py-1.5 text-xs font-bold transition-colors", type === t && server === 2 ? "bg-primary text-primary-foreground" : "bg-secondary/50 text-muted-foreground hover:text-foreground")}>Server 2 · FHD · 4K</button>}
                     {canUseServerThree && <button type="button" onClick={() => { setType(t); setServer(3) }} className={cn("flex-1 px-2.5 py-1.5 text-xs font-bold transition-colors", type === t && server === 3 ? "bg-primary text-primary-foreground" : "bg-secondary/50 text-muted-foreground hover:text-foreground")}>Server 3</button>}
                   </div>
