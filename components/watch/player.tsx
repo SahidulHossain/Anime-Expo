@@ -36,7 +36,7 @@ export function Player({ anime, episode }: { anime: AnimeDetail; episode: Episod
 
   const requested = (params.get("type") as StreamType) || available[0]
   const [type, setType] = useState<StreamType>(available.includes(requested) ? requested : available[0])
-  const [server, setServer] = useState<1 | 2>(1)
+  const [server, setServer] = useState<1 | 2 | 3>(1)
   const [loadError, setLoadError] = useState(false)
   const [autoNext, setAutoNext] = useState(false)
   const [filter, setFilter] = useState("")
@@ -60,11 +60,15 @@ export function Player({ anime, episode }: { anime: AnimeDetail; episode: Episod
   const aniEmbedUrl = anime.aniListId
     ? `https://aniembed.se/e/${encodeURIComponent(anime.aniListId)}/${encodeURIComponent(String(episode.number))}?lang=${type}&autoplay=0`
     : undefined
-  const streamUrl = server === 2 ? aniEmbedUrl : serverOneUrl
+  const anixoEmbedUrl = (anime.aniListId || anime.malId)
+    ? `https://anixo.buzz/embed/${anime.aniListId ? "ani" : "mal"}/${encodeURIComponent(String(anime.aniListId || anime.malId))}/${encodeURIComponent(String(episode.number))}?track=${type}&server=1&autoSkipIntro=1&autoSkipOutro=1`
+    : undefined
+  const streamUrl = server === 2 ? aniEmbedUrl : server === 3 ? anixoEmbedUrl : serverOneUrl
   const downloadUrl = anime.malId
     ? `https://zokoanime.video/download/mal/${encodeURIComponent(anime.malId)}/${encodeURIComponent(String(episode.number))}/${type}`
     : undefined
   const canUseServerTwo = Boolean(anime.aniListId)
+  const canUseServerThree = Boolean(anime.aniListId || anime.malId)
 
   useEffect(() => {
     setLoadError(false)
@@ -133,7 +137,7 @@ export function Player({ anime, episode }: { anime: AnimeDetail; episode: Episod
                   key={`${episode.id}-${type}-${server}`}
                   src={streamUrl}
                   title={`${anime.title} Episode ${episode.number}`}
-                  allow="autoplay; encrypted-media; picture-in-picture; fullscreen"
+                  allow="autoplay; encrypted-media; picture-in-picture; fullscreen" referrerPolicy="no-referrer"
                   allowFullScreen
                   onError={() => setLoadError(true)}
                   className="absolute inset-0 h-full w-full border-0"
@@ -189,6 +193,7 @@ export function Player({ anime, episode }: { anime: AnimeDetail; episode: Episod
                   <div className="flex min-w-0 flex-1 overflow-hidden rounded-md border border-border">
                     <button type="button" onClick={() => { setType(t); setServer(1) }} className={cn("flex-1 px-2.5 py-1.5 text-xs font-bold transition-colors", type === t && server === 1 ? "bg-primary text-primary-foreground" : "bg-secondary/50 text-muted-foreground hover:text-foreground")}>Server 1 · FHD</button>
                     {canUseServerTwo && <button type="button" onClick={() => { setType(t); setServer(2) }} className={cn("flex-1 px-2.5 py-1.5 text-xs font-bold transition-colors", type === t && server === 2 ? "bg-primary text-primary-foreground" : "bg-secondary/50 text-muted-foreground hover:text-foreground")}>Server 2 · FHD · 4K</button>}
+                    {canUseServerThree && <button type="button" onClick={() => { setType(t); setServer(3) }} className={cn("flex-1 px-2.5 py-1.5 text-xs font-bold transition-colors", type === t && server === 3 ? "bg-primary text-primary-foreground" : "bg-secondary/50 text-muted-foreground hover:text-foreground")}>Server 3 · FHD</button>}
                   </div>
                 </div>
               ))}
