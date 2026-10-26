@@ -2,7 +2,7 @@ import { notFound } from "next/navigation"
 import { getAnimeDetail } from "@/lib/anime-api"
 import { Player } from "@/components/watch/player"
 
-export const revalidate = 600
+export const revalidate = 10800
 
 export async function generateMetadata({
   params,

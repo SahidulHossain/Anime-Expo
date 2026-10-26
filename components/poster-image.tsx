@@ -23,6 +23,7 @@ export function PosterImage({ src, alt, className }: PosterImageProps) {
           src={src || "/placeholder.svg"}
           alt={alt}
           loading="lazy"
+        decoding="async"
           onLoad={() => setLoaded(true)}
           onError={() => setErrored(true)}
           className={cn(

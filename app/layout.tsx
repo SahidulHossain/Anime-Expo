@@ -35,9 +35,9 @@ export default function RootLayout({
     <html lang="en" className="dark">
       <body className={`${inter.variable} font-sans antialiased`}>
         <SiteHeader />
-        <div className="min-h-[calc(100dvh-4rem)] overflow-x-clip pb-28">{children}</div>
+        <div className="min-h-[calc(100dvh-4rem)] overflow-x-clip pb-[calc(7rem+env(safe-area-inset-bottom))]">{children}</div>
         <BottomNav />
-        <footer className="border-t border-border/60 py-8 text-center text-sm text-muted-foreground">
+        <footer className="border-t border-border/60 px-4 py-8 pb-[calc(8rem+env(safe-area-inset-bottom))] text-center text-sm text-muted-foreground">
           <p>
             <img src={LOGO_URL} alt="AnimExpo" className="mx-auto h-8 w-auto object-contain" />
             <span className="sr-only">AnimExpo — Stream your favorite anime.</span>

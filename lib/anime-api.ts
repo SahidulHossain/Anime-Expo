@@ -5,7 +5,8 @@ import type { AnimeSummary, AnimeDetail, Episode, Paginated } from "./types"
 // Centralized, server-only data source. The upstream provider is never
 // referenced anywhere in the client bundle or the UI.
 const BASE_URL = process.env.ANIME_API_BASE_URL || "https://anikotoapi.site"
-const REVALIDATE_SECONDS = 60 * 10
+export const ANIME_CACHE_TTL_MS = 3 * 60 * 60 * 1000
+const REVALIDATE_SECONDS = ANIME_CACHE_TTL_MS / 1000
 
 type RawAnime = {
   id: number
@@ -33,6 +34,7 @@ type RawEpisode = {
   id: number
   title?: string
   number?: number
+  episode_embed_id?: string
   embed_url?: { sub?: string; dub?: string }
 }
 
@@ -41,6 +43,8 @@ function mapAnime(raw: RawAnime): AnimeSummary {
   const type = raw.terms_by_type?.type?.[0]
   return {
     id: raw.id,
+    animExpoId: raw.id,
+    anikotoSeriesId: String(raw.id),
     title: raw.title ?? "Untitled",
     poster: raw.poster ?? "",
     banner: raw.background_image || undefined,
@@ -65,6 +69,8 @@ function mapEpisode(raw: RawEpisode): Episode {
     id: raw.id,
     title: raw.title || `Episode ${raw.number ?? ""}`.trim(),
     number: raw.number ?? 0,
+    episodeNumber: raw.number ?? undefined,
+    episodeEmbedId: raw.episode_embed_id || undefined,
     sub: raw.embed_url?.sub || undefined,
     dub: raw.embed_url?.dub || undefined,
   }

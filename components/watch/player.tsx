@@ -29,31 +29,48 @@ export function Player({ anime, episode }: { anime: AnimeDetail; episode: Episod
 
   const available: StreamType[] = useMemo(() => {
     const list: StreamType[] = []
-    if (episode.sub || anime.isSub > 0) list.push("sub")
-    if (episode.dub || anime.isDub > 0) list.push("dub")
+    if (episode.sub) list.push("sub")
+    if (episode.dub) list.push("dub")
     return list.length ? list : ["sub"]
   }, [episode, anime])
 
   const requested = (params.get("type") as StreamType) || available[0]
   const [type, setType] = useState<StreamType>(available.includes(requested) ? requested : available[0])
-  const [server, setServer] = useState<1 | 2>(1)
+  const [server, setServer] = useState<1 | 2 | 3>(1)
   const [loadError, setLoadError] = useState(false)
   const [autoNext, setAutoNext] = useState(false)
   const [filter, setFilter] = useState("")
+  const [episodeLayout, setEpisodeLayout] = useState<"compact" | "expanded">("compact")
+
+  useEffect(() => {
+    const saved = window.localStorage.getItem("animexpo-episode-layout")
+    if (saved === "compact" || saved === "expanded") setEpisodeLayout(saved)
+  }, [])
+
+  const changeEpisodeLayout = (layout: "compact" | "expanded") => {
+    setEpisodeLayout(layout)
+    window.localStorage.setItem("animexpo-episode-layout", layout)
+  }
 
   const index = anime.episodes.findIndex((e) => e.id === episode.id)
   const prev = index > 0 ? anime.episodes[index - 1] : undefined
   const next = index >= 0 && index < anime.episodes.length - 1 ? anime.episodes[index + 1] : undefined
 
-  const serverOneUrl = (type === "dub" ? episode.dub : episode.sub) || episode.sub || episode.dub
+  const serverOneUrl = type === "dub" ? episode.dub : episode.sub
+
   const aniEmbedUrl = anime.aniListId
     ? `https://aniembed.se/e/${encodeURIComponent(anime.aniListId)}/${encodeURIComponent(String(episode.number))}?lang=${type}&autoplay=0`
     : undefined
-  const streamUrl = server === 2 ? aniEmbedUrl : serverOneUrl
+  const anixoEmbedUrl = anime.aniListId && episode.episodeNumber
+    ? `https://anixo.buzz/embed/ani/${encodeURIComponent(anime.aniListId)}/${encodeURIComponent(String(episode.episodeNumber))}?player=custom&track=${type}`
+    : undefined
+  const streamUrl = server === 2 ? aniEmbedUrl : server === 3 ? anixoEmbedUrl : serverOneUrl
   const downloadUrl = anime.malId
     ? `https://zokoanime.video/download/mal/${encodeURIComponent(anime.malId)}/${encodeURIComponent(String(episode.number))}/${type}`
     : undefined
+  const canUseServerOne = Boolean(serverOneUrl)
   const canUseServerTwo = Boolean(anime.aniListId)
+  const canUseServerThree = Boolean(anime.aniListId && episode.episodeNumber)
 
   useEffect(() => {
     setLoadError(false)
@@ -122,7 +139,7 @@ export function Player({ anime, episode }: { anime: AnimeDetail; episode: Episod
                   key={`${episode.id}-${type}-${server}`}
                   src={streamUrl}
                   title={`${anime.title} Episode ${episode.number}`}
-                  allow="autoplay; encrypted-media; picture-in-picture; fullscreen"
+                  allow="autoplay; encrypted-media; picture-in-picture; fullscreen" referrerPolicy="no-referrer"
                   allowFullScreen
                   onError={() => setLoadError(true)}
                   className="absolute inset-0 h-full w-full border-0"
@@ -176,8 +193,9 @@ export function Player({ anime, episode }: { anime: AnimeDetail; episode: Episod
                 <div key={t} className="flex items-center gap-2">
                   <span className="w-8 text-xs font-bold uppercase text-muted-foreground">{t}</span>
                   <div className="flex min-w-0 flex-1 overflow-hidden rounded-md border border-border">
-                    <button type="button" onClick={() => { setType(t); setServer(1) }} className={cn("flex-1 px-2.5 py-1.5 text-xs font-bold transition-colors", type === t && server === 1 ? "bg-primary text-primary-foreground" : "bg-secondary/50 text-muted-foreground hover:text-foreground")}>Server 1 · FHD</button>
+                    {canUseServerOne && <button type="button" onClick={() => { setType(t); setServer(1) }} className={cn("flex-1 px-2.5 py-1.5 text-xs font-bold transition-colors", type === t && server === 1 ? "bg-primary text-primary-foreground" : "bg-secondary/50 text-muted-foreground hover:text-foreground")}>Server 1</button>}
                     {canUseServerTwo && <button type="button" onClick={() => { setType(t); setServer(2) }} className={cn("flex-1 px-2.5 py-1.5 text-xs font-bold transition-colors", type === t && server === 2 ? "bg-primary text-primary-foreground" : "bg-secondary/50 text-muted-foreground hover:text-foreground")}>Server 2 · FHD · 4K</button>}
+                    {canUseServerThree && <button type="button" onClick={() => { setType(t); setServer(3) }} className={cn("flex-1 px-2.5 py-1.5 text-xs font-bold transition-colors", type === t && server === 3 ? "bg-primary text-primary-foreground" : "bg-secondary/50 text-muted-foreground hover:text-foreground")}>Server 3</button>}
                   </div>
                 </div>
               ))}
@@ -243,8 +261,13 @@ export function Player({ anime, episode }: { anime: AnimeDetail; episode: Episod
           <div className="rounded-xl border border-border/60 bg-card">
             <div className="border-b border-border/60 p-3">
               <div className="mb-2 flex items-center justify-between">
-                <h2 className="text-sm font-bold">Episodes</h2>
-                <span className="text-xs text-muted-foreground">{anime.episodes.length}</span>
+                <div className="flex items-center gap-2">
+                  <h2 className="text-sm font-bold">Episodes</h2>
+                  <span className="text-xs text-muted-foreground">{anime.episodes.length}</span>
+                </div>
+                <div className="flex rounded-md border border-border p-0.5 text-[11px] font-semibold">
+                  {(["compact", "expanded"] as const).map((layout) => <button key={layout} type="button" onClick={() => changeEpisodeLayout(layout)} className={cn("rounded px-2 py-1 capitalize", episodeLayout === layout ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground")}>{layout}</button>)}
+                </div>
               </div>
               <div className="relative">
                 <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
@@ -259,13 +282,11 @@ export function Player({ anime, episode }: { anime: AnimeDetail; episode: Episod
               </div>
             </div>
             <div className="max-h-[420px] overflow-y-auto p-2 lg:max-h-[calc(100dvh-16rem)] [scrollbar-width:thin]">
-              <div className="grid grid-cols-4 gap-2 min-[380px]:grid-cols-5 lg:grid-cols-4">
+              <div className={cn("grid gap-2", episodeLayout === "compact" ? "grid-cols-4 min-[380px]:grid-cols-5 lg:grid-cols-4" : "grid-cols-1 sm:grid-cols-2 lg:grid-cols-1")}>
                 {filteredEpisodes.map((ep) => {
                   const active = ep.id === episode.id
                   const watched = history.some((item) => item.animeId === anime.id && item.episodeId === ep.id)
-                  return (
-                    <button key={ep.id} type="button" onClick={() => goToEpisode(ep)} title={ep.title} aria-label={`Episode ${ep.number}: ${ep.title}`} className={cn("relative flex min-h-12 items-center justify-center rounded-lg border text-sm font-bold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary", active ? "border-primary bg-primary text-primary-foreground" : "border-border/60 bg-secondary/40 text-foreground hover:border-primary/50")}>{ep.number || "?"}{watched && !active && <span className="absolute bottom-1 left-1/2 h-0.5 w-5 -translate-x-1/2 rounded-full bg-primary" aria-label="Watched" />}</button>
-                  )
+                  return <button key={ep.id} type="button" onClick={() => goToEpisode(ep)} title={ep.title} aria-label={`Episode ${ep.number}: ${ep.title}`} className={cn("relative flex min-h-12 items-center rounded-lg border text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary", episodeLayout === "compact" ? "justify-center text-sm font-bold" : "justify-start gap-3 px-3 text-sm", active ? "border-primary bg-primary text-primary-foreground" : "border-border/60 bg-secondary/40 text-foreground hover:border-primary/50")}>{episodeLayout === "expanded" && <span className="font-bold">{ep.number || "?"}</span>}{episodeLayout === "expanded" ? <span className="truncate">{ep.title !== `Episode ${ep.number}` ? ep.title : `Episode ${ep.number}`}</span> : ep.number || "?"}{watched && !active && <span className="absolute bottom-1 left-1/2 h-0.5 w-5 -translate-x-1/2 rounded-full bg-primary" aria-label="Watched" />}</button>
                 })}
               </div>
               {filteredEpisodes.length === 0 && <p className="p-6 text-center text-sm text-muted-foreground">No episodes match your search.</p>}

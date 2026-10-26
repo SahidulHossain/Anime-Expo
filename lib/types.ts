@@ -1,5 +1,7 @@
 export interface AnimeSummary {
   id: number
+  animExpoId?: number
+  anikotoSeriesId?: string
   title: string
   poster: string
   banner?: string
@@ -22,6 +24,8 @@ export interface Episode {
   id: number
   title: string
   number: number
+  episodeNumber?: number
+  episodeEmbedId?: string
   sub?: string
   dub?: string
 }

@@ -7,7 +7,7 @@ export function AnimeCard({ anime }: { anime: AnimeSummary }) {
   return (
     <Link
       href={`/anime/${anime.id}`}
-      className="group block overflow-hidden rounded-lg border border-border/60 bg-card transition-colors hover:border-primary/60"
+      className="group block overflow-hidden rounded-lg border border-border/60 bg-card transition-[border-color,transform] duration-150 hover:-translate-y-0.5 hover:border-primary/60 motion-reduce:transform-none"
     >
       <div className="relative">
         <PosterImage src={anime.poster} alt={anime.title} className="aspect-[2/3]" />
@@ -34,10 +34,10 @@ export function AnimeCard({ anime }: { anime: AnimeSummary }) {
       </div>
 
       <div className="p-2.5">
-        <h3 className="line-clamp-2 text-sm font-semibold leading-snug text-foreground group-hover:text-primary">
+        <h3 className="line-clamp-2 min-h-9 text-[13px] font-semibold leading-5 text-foreground group-hover:text-primary">
           {anime.title}
         </h3>
-        <p className="mt-1 line-clamp-1 text-xs text-muted-foreground">
+        <p className="mt-1 line-clamp-1 text-[11px] text-muted-foreground">
           {[anime.type, anime.episodeCount ? `${anime.episodeCount} eps` : null, anime.year]
             .filter(Boolean)
             .join(" • ")}
