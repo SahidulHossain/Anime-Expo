@@ -1,10 +1,11 @@
 import { notFound } from "next/navigation"
 import Link from "next/link"
-import { ArrowLeft, Share2, Play, Star, Calendar, Clapperboard, Layers3 } from "lucide-react"
+import { ArrowLeft, Play, Star, Calendar, Clapperboard, Layers3 } from "lucide-react"
 import { getAnimeDetail, getRecentAnime } from "@/lib/anime-api"
 import { PosterImage } from "@/components/poster-image"
 import { WatchlistButton } from "@/components/anime/watchlist-button"
 import { AnimeDetailsTabs } from "@/components/anime/anime-details-tabs"
+import { ShareButton } from "@/components/anime/share-button"
 
 export const revalidate = 10800
 
@@ -30,7 +31,7 @@ export default async function AnimeDetailPage({ params }: { params: Promise<{ id
         <div className="absolute inset-0 bg-gradient-to-t from-background via-background/85 to-background/30" />
       </div>
       <div className="relative mx-auto max-w-7xl px-4 pb-4 pt-6 sm:pt-10">
-        <div className="mb-8 flex items-center justify-between"><Link href="/" aria-label="Back home" className="rounded-full border border-white/10 bg-black/30 p-2.5 text-white hover:border-primary"><ArrowLeft className="size-5" /></Link><button type="button" aria-label="Share anime" className="rounded-full border border-white/10 bg-black/30 p-2.5 text-white hover:border-primary"><Share2 className="size-5" /></button></div>
+        <div className="mb-8 flex items-center justify-between"><Link href="/" aria-label="Back home" className="rounded-full border border-white/10 bg-black/30 p-2.5 text-white hover:border-primary"><ArrowLeft className="size-5" /></Link><ShareButton animeId={anime.id} title={anime.title} /></div>
         <div className="flex flex-col gap-5 sm:flex-row sm:items-end sm:gap-8">
           <div className="mx-auto w-36 shrink-0 sm:mx-0 sm:w-52"><PosterImage src={anime.poster} alt={anime.title} className="aspect-[2/3] rounded-2xl border border-white/10 shadow-2xl" /></div>
           <div className="min-w-0 flex-1 pb-1"><p className="mb-2 text-xs font-bold uppercase tracking-[0.2em] text-primary">Anime details</p><h1 className="text-balance text-3xl font-black tracking-tight sm:text-5xl">{anime.title}</h1>

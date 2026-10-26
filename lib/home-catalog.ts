@@ -16,14 +16,21 @@ const ALIASES: Record<string, string[]> = {
 }
 
 function normalizeTitle(title: string) {
-  return title.toLowerCase().replace(/[^a-z0-9]/g, "")
+  return title.toLowerCase().replace(/&/g, "and").replace(/[^a-z0-9]/g, "")
+}
+
+function franchiseKey(title: string) {
+  return normalizeTitle(title).replace(/(season|part|cour|movie|film|ova|ona|special|thefinalseason|finalseason|\d)+$/g, "")
 }
 
 export function getTopRatedPicks(items: AnimeSummary[]): AnimeSummary[] {
-  const aliases = Object.entries(ALIASES).flatMap(([title, names]) => names.map((name) => [normalizeTitle(name), normalizeTitle(title)] as const))
-  const requested = new Map(TOP_RATED_TITLES.map((title, index) => [normalizeTitle(title), index]))
-  for (const [alias, canonical] of aliases) requested.set(alias, requested.get(canonical) ?? 0)
-  return Array.from(new Map(items.filter((item) => requested.has(normalizeTitle(item.title))).sort((a, b) => (requested.get(normalizeTitle(a.title)) ?? 999) - (requested.get(normalizeTitle(b.title)) ?? 999)).map((item) => [item.id, item])).values())
+  const requested = new Map(TOP_RATED_TITLES.map((title, index) => [franchiseKey(title), index]))
+  for (const [title, names] of Object.entries(ALIASES)) {
+    const position = requested.get(franchiseKey(title))
+    if (position !== undefined) for (const name of names) requested.set(franchiseKey(name), position)
+  }
+  const matches = items.filter((item) => requested.has(franchiseKey(item.title)))
+  return Array.from(new Map(matches.sort((a, b) => (requested.get(franchiseKey(a.title)) ?? 999) - (requested.get(franchiseKey(b.title)) ?? 999)).map((item) => [item.id, item])).values())
 }
 
 export function getUpcoming(items: AnimeSummary[]): AnimeSummary[] {
