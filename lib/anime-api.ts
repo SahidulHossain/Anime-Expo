@@ -34,6 +34,7 @@ type RawEpisode = {
   id: number
   title?: string
   number?: number
+  episode_embed_id?: string
   embed_url?: { sub?: string; dub?: string }
 }
 
@@ -66,6 +67,7 @@ function mapEpisode(raw: RawEpisode): Episode {
     id: raw.id,
     title: raw.title || `Episode ${raw.number ?? ""}`.trim(),
     number: raw.number ?? 0,
+    episodeEmbedId: raw.episode_embed_id || undefined,
     sub: raw.embed_url?.sub || undefined,
     dub: raw.embed_url?.dub || undefined,
   }

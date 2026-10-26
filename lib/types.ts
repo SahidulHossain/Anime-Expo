@@ -22,6 +22,7 @@ export interface Episode {
   id: number
   title: string
   number: number
+  episodeEmbedId?: string
   sub?: string
   dub?: string
 }
