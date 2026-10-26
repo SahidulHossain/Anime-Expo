@@ -5,7 +5,8 @@ import type { AnimeSummary, AnimeDetail, Episode, Paginated } from "./types"
 // Centralized, server-only data source. The upstream provider is never
 // referenced anywhere in the client bundle or the UI.
 const BASE_URL = process.env.ANIME_API_BASE_URL || "https://anikotoapi.site"
-const REVALIDATE_SECONDS = 60 * 10
+export const ANIME_CACHE_TTL_MS = 3 * 60 * 60 * 1000
+const REVALIDATE_SECONDS = ANIME_CACHE_TTL_MS / 1000
 
 type RawAnime = {
   id: number

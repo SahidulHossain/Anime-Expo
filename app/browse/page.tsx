@@ -3,7 +3,7 @@ import { getRecentAnime, searchAnime } from "@/lib/anime-api"
 import { AnimeCardGrid } from "@/components/anime-card"
 import { PaginationNav } from "@/components/pagination-nav"
 
-export const revalidate = 600
+export const revalidate = 10800
 
 export const metadata: Metadata = {
   title: "Browse All Anime",

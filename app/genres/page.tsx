@@ -3,7 +3,7 @@ import Link from "next/link"
 import { Search } from "lucide-react"
 import { getRecentAnime } from "@/lib/anime-api"
 
-export const revalidate = 600
+export const revalidate = 10800
 export const metadata: Metadata = { title: "Genres", description: "Browse anime by genre on AnimExpo." }
 
 const GENRES = [

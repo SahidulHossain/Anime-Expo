@@ -5,11 +5,11 @@ import { SectionHeading } from "@/components/section-heading"
 import { Hero } from "@/components/home/hero"
 import { ContinueWatching } from "@/components/home/continue-watching"
 
-export const revalidate = 600
+export const revalidate = 10800
 
 export default async function HomePage() {
-  const recent = await getRecentAnime(1, 36)
-  const items = recent.items
+  const pages = await Promise.all([1, 2, 3].map((page) => getRecentAnime(page, 100).catch(() => ({ items: [], page, perPage: 100, total: 0, totalPages: 0 }))))
+  const items = pages.flatMap((page) => page.items)
 
   const uniqueItems = Array.from(new Map(items.map((item) => [item.id, item])).values())
   const featured = uniqueItems.find((a) => a.banner) ?? uniqueItems[0]
@@ -20,7 +20,7 @@ export default async function HomePage() {
     .slice(0, 12)
   const latest = uniqueItems.slice(0, 18)
   const personalized = uniqueItems.filter((a) => a.genres.some((genre) => featured?.genres.includes(genre))).slice(0, 12)
-  const movies = uniqueItems.filter((a) => a.type?.trim().toLowerCase() === "movie").slice(0, 12)
+  const movies = uniqueItems.filter((a) => ["movie", "film"].includes(a.type?.trim().toLowerCase() || "")).sort((a, b) => Number(b.score || 0) - Number(a.score || 0)).slice(0, 24)
 
   if (items.length === 0) {
     return (
