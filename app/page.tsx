@@ -4,6 +4,7 @@ import { AnimeCarousel } from "@/components/anime-carousel"
 import { SectionHeading } from "@/components/section-heading"
 import { Hero } from "@/components/home/hero"
 import { ContinueWatching } from "@/components/home/continue-watching"
+import { getTopRatedPicks, getUpcoming } from "@/lib/home-catalog"
 
 export const revalidate = 10800
 
@@ -21,6 +22,7 @@ export default async function HomePage() {
   const latest = uniqueItems.slice(0, 18)
   const personalized = uniqueItems.filter((a) => a.genres.some((genre) => featured?.genres.includes(genre))).slice(0, 12)
   const movies = uniqueItems.filter((a) => ["movie", "film"].includes(a.type?.trim().toLowerCase() || "")).sort((a, b) => Number(b.score || 0) - Number(a.score || 0)).slice(0, 24)
+  const [topRated, upcoming] = await Promise.all([getTopRatedPicks(), Promise.resolve(getUpcoming(uniqueItems))])
 
   if (items.length === 0) {
     return (
@@ -42,12 +44,27 @@ export default async function HomePage() {
           <SectionHeading
             title="Trending Now"
             action={
-              <Link href="/browse" className="text-sm font-medium text-muted-foreground hover:text-primary">
-                Browse all
-              </Link>
+              <div className="flex items-center gap-3">
+                <Link href="/browse" className="text-sm font-medium text-muted-foreground hover:text-primary">Browse all</Link>
+                <Link href="/search" className="text-sm font-medium text-muted-foreground hover:text-primary">Search</Link>
+              </div>
             }
           />
           <AnimeCarousel items={trending} />
+        </section>
+      )}
+
+      {topRated.length > 0 && (
+        <section className="mx-auto max-w-7xl px-4 py-8">
+          <SectionHeading title="Editor's Top Rated Picks" action={<Link href="/search" className="text-sm font-medium text-muted-foreground hover:text-primary">Search catalog</Link>} />
+          <AnimeCarousel items={topRated} />
+        </section>
+      )}
+
+      {upcoming.length > 0 && (
+        <section className="mx-auto max-w-7xl px-4 py-8">
+          <SectionHeading title="Upcoming Anime" />
+          <AnimeCarousel items={upcoming} />
         </section>
       )}
 
