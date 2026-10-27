@@ -5,6 +5,7 @@ import { SectionHeading } from "@/components/section-heading"
 import { Hero } from "@/components/home/hero"
 import { ContinueWatching } from "@/components/home/continue-watching"
 import { getTopRatedPicks, getUpcoming } from "@/lib/home-catalog"
+import { getAnimeCatalog } from "@/lib/anime-api"
 
 export const revalidate = 10800
 
@@ -21,7 +22,8 @@ export default async function HomePage() {
     .slice(0, 12)
   const latest = uniqueItems.slice(0, 18)
   const movies = uniqueItems.filter((a) => ["movie", "film"].includes(a.type?.trim().toLowerCase() || "")).sort((a, b) => Number(b.score || 0) - Number(a.score || 0)).slice(0, 24)
-  const topRated = getTopRatedPicks(uniqueItems)
+  const catalog = await getAnimeCatalog()
+  const topRated = getTopRatedPicks(catalog)
   const upcoming = getUpcoming(uniqueItems)
   const airing = latest.filter((item) => /airing|ongoing|currently/i.test(item.status ?? ""))
 

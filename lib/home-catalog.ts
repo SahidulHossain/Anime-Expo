@@ -19,18 +19,26 @@ function normalizeTitle(title: string) {
   return title.toLowerCase().replace(/&/g, "and").replace(/[^a-z0-9]/g, "")
 }
 
-function franchiseKey(title: string) {
-  return normalizeTitle(title).replace(/(season|part|cour|movie|film|ova|ona|special|thefinalseason|finalseason|\d)+$/g, "")
+function titleKey(title: string) {
+  return normalizeTitle(title)
 }
 
 export function getTopRatedPicks(items: AnimeSummary[]): AnimeSummary[] {
-  const requested = new Map(TOP_RATED_TITLES.map((title, index) => [franchiseKey(title), index]))
+  const requested = new Map<string, number>()
+  TOP_RATED_TITLES.forEach((title, index) => requested.set(titleKey(title), index))
   for (const [title, names] of Object.entries(ALIASES)) {
-    const position = requested.get(franchiseKey(title))
-    if (position !== undefined) for (const name of names) requested.set(franchiseKey(name), position)
+    const position = requested.get(titleKey(title))
+    if (position !== undefined) for (const name of names) requested.set(titleKey(name), position)
   }
-  const matches = items.filter((item) => requested.has(franchiseKey(item.title)))
-  return Array.from(new Map(matches.sort((a, b) => (requested.get(franchiseKey(a.title)) ?? 999) - (requested.get(franchiseKey(b.title)) ?? 999)).map((item) => [item.id, item])).values())
+  const matches = items.filter((item) => {
+    const key = titleKey(item.title)
+    return requested.has(key) || [...requested.keys()].some((candidate) => key.startsWith(candidate) || candidate.startsWith(key))
+  })
+  return Array.from(new Map(matches.sort((a, b) => {
+    const ai = requested.get(titleKey(a.title)) ?? TOP_RATED_TITLES.findIndex((title) => titleKey(a.title).startsWith(titleKey(title)))
+    const bi = requested.get(titleKey(b.title)) ?? TOP_RATED_TITLES.findIndex((title) => titleKey(b.title).startsWith(titleKey(title)))
+    return (ai < 0 ? 999 : ai) - (bi < 0 ? 999 : bi)
+  }).map((item) => [item.id, item])).values())
 }
 
 export function getUpcoming(items: AnimeSummary[]): AnimeSummary[] {
