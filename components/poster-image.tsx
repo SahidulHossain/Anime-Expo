@@ -8,9 +8,10 @@ interface PosterImageProps {
   alt: string
   className?: string
   sizes?: string
+  priority?: boolean
 }
 
-export function PosterImage({ src, alt, className }: PosterImageProps) {
+export function PosterImage({ src, alt, className, priority = false }: PosterImageProps) {
   const [loaded, setLoaded] = useState(false)
   const [errored, setErrored] = useState(false)
 
@@ -22,8 +23,9 @@ export function PosterImage({ src, alt, className }: PosterImageProps) {
         <img
           src={src || "/placeholder.svg"}
           alt={alt}
-          loading="lazy"
-        decoding="async"
+          loading={priority ? "eager" : "lazy"}
+          fetchPriority={priority ? "high" : "auto"}
+          decoding="async"
           onLoad={() => setLoaded(true)}
           onError={() => setErrored(true)}
           className={cn(

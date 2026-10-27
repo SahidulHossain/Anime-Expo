@@ -11,26 +11,43 @@ const ALIASES: Record<string, string[]> = {
   "Fullmetal Alchemist: Brotherhood": ["Hagane no Renkinjutsushi"],
   "The Apothecary Diaries": ["Kusuriya no Hitorigoto"],
   "Haikyu!!": ["Haikyuu!!"],
-  "Re:Zero - Starting Life in Another World": ["Re Zero"],
+  "Re:Zero - Starting Life in Another World": ["Re Zero", "Re:ZERO -Starting Life in Another World-"],
   "My Teen Romantic Comedy SNAFU": ["Oregairu", "Yahari Ore no Seishun Love Comedy wa Machigatteiru"],
+  "Mushishi": ["Mushi-Shi"],
+  "Clannad: After Story": ["Clannad ~After Story~"],
+  "Kaguya-sama: Love Is War": ["Kaguya-sama: Love is War"],
+  "Erased": ["ERASED"],
+  "Yuri!!! on Ice": ["Yuri!!! On ICE"],
 }
 
 function normalizeTitle(title: string) {
   return title.toLowerCase().replace(/&/g, "and").replace(/[^a-z0-9]/g, "")
 }
 
-function franchiseKey(title: string) {
-  return normalizeTitle(title).replace(/(season|part|cour|movie|film|ova|ona|special|thefinalseason|finalseason|\d)+$/g, "")
+function titleKey(title: string) {
+  return normalizeTitle(title)
 }
 
 export function getTopRatedPicks(items: AnimeSummary[]): AnimeSummary[] {
-  const requested = new Map(TOP_RATED_TITLES.map((title, index) => [franchiseKey(title), index]))
-  for (const [title, names] of Object.entries(ALIASES)) {
-    const position = requested.get(franchiseKey(title))
-    if (position !== undefined) for (const name of names) requested.set(franchiseKey(name), position)
-  }
-  const matches = items.filter((item) => requested.has(franchiseKey(item.title)))
-  return Array.from(new Map(matches.sort((a, b) => (requested.get(franchiseKey(a.title)) ?? 999) - (requested.get(franchiseKey(b.title)) ?? 999)).map((item) => [item.id, item])).values())
+  const byKey = new Map(items.map((item) => [titleKey(item.title), item]))
+  const results: AnimeSummary[] = []
+
+  TOP_RATED_TITLES.forEach((title) => {
+    const names = [title, ...(ALIASES[title] ?? [])]
+    const exact = names.map(titleKey).map((key) => byKey.get(key)).find(Boolean)
+    if (exact) {
+      results.push(exact)
+      return
+    }
+
+    const keys = names.map(titleKey)
+    const variant = items
+      .filter((item) => keys.some((key) => new RegExp(`^${key}(season|part|cour|thefinalseason|finalseason)\\d*$`).test(titleKey(item.title))))
+      .sort((a, b) => Number(b.score || 0) - Number(a.score || 0))[0]
+    if (variant) results.push(variant)
+  })
+
+  return Array.from(new Map(results.map((item) => [item.id, item])).values())
 }
 
 export function getUpcoming(items: AnimeSummary[]): AnimeSummary[] {

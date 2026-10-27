@@ -206,6 +206,10 @@ function scoreMatch(entry: IndexedAnime, query: string, tokens: string[]) {
   return 0
 }
 
+export async function getAnimeCatalog(): Promise<AnimeSummary[]> {
+  return (await getIndex()).map((entry) => entry.anime)
+}
+
 export async function searchAnime(query: string, page = 1, perPage = 30): Promise<Paginated<AnimeSummary>> {
   const normalized = normalize(query)
   if (!normalized) return { items: [], page: 1, perPage, total: 0, totalPages: 0 }
