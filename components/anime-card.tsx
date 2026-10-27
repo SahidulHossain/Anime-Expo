@@ -3,14 +3,14 @@ import { Star } from "lucide-react"
 import type { AnimeSummary } from "@/lib/types"
 import { PosterImage } from "./poster-image"
 
-export function AnimeCard({ anime }: { anime: AnimeSummary }) {
+export function AnimeCard({ anime, priority = false }: { anime: AnimeSummary; priority?: boolean }) {
   return (
     <Link
       href={`/anime/${anime.id}`}
       className="group block overflow-hidden rounded-lg border border-border/60 bg-card transition-[border-color,transform] duration-150 hover:-translate-y-0.5 hover:border-primary/60 motion-reduce:transform-none"
     >
       <div className="relative">
-        <PosterImage src={anime.poster} alt={anime.title} className="aspect-[2/3]" />
+        <PosterImage src={anime.poster} alt={anime.title} className="aspect-[2/3]" priority={priority} />
 
         {anime.score && (
           <span className="absolute left-2 top-2 inline-flex items-center gap-1 rounded-md bg-background/85 px-1.5 py-0.5 text-xs font-semibold backdrop-blur-sm">
@@ -50,8 +50,8 @@ export function AnimeCard({ anime }: { anime: AnimeSummary }) {
 export function AnimeCardGrid({ items }: { items: AnimeSummary[] }) {
   return (
     <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6">
-      {items.map((anime) => (
-        <AnimeCard key={anime.id} anime={anime} />
+      {items.map((anime, index) => (
+        <AnimeCard key={anime.id} anime={anime} priority={index < 6} />
       ))}
     </div>
   )

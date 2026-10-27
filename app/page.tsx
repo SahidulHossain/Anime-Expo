@@ -10,7 +10,10 @@ import { getAnimeCatalog } from "@/lib/anime-api"
 export const revalidate = 10800
 
 export default async function HomePage() {
-  const pages = await Promise.all([1, 2, 3].map((page) => getRecentAnime(page, 100).catch(() => ({ items: [], page, perPage: 100, total: 0, totalPages: 0 }))))
+  const [pages, catalog] = await Promise.all([
+    Promise.all([1, 2, 3].map((page) => getRecentAnime(page, 100).catch(() => ({ items: [], page, perPage: 100, total: 0, totalPages: 0 })))),
+    getAnimeCatalog().catch(() => []),
+  ])
   const items = pages.flatMap((page) => page.items)
 
   const uniqueItems = Array.from(new Map(items.map((item) => [item.id, item])).values())
@@ -22,7 +25,6 @@ export default async function HomePage() {
     .slice(0, 12)
   const latest = uniqueItems.slice(0, 18)
   const movies = uniqueItems.filter((a) => ["movie", "film"].includes(a.type?.trim().toLowerCase() || "")).sort((a, b) => Number(b.score || 0) - Number(a.score || 0)).slice(0, 24)
-  const catalog = await getAnimeCatalog()
   const topRated = getTopRatedPicks(catalog)
   const upcoming = getUpcoming(uniqueItems)
   const airing = latest.filter((item) => /airing|ongoing|currently/i.test(item.status ?? ""))
@@ -70,7 +72,7 @@ export default async function HomePage() {
 
       {topRated.length > 0 && (
         <section className="mx-auto max-w-7xl px-4 py-8">
-          <SectionHeading title="Top Rated" />
+          <SectionHeading title="Top Rated" action={<Link href="/top-rated" className="text-sm font-medium text-muted-foreground hover:text-primary">View all</Link>} />
           <AnimeCarousel items={topRated} />
         </section>
       )}
