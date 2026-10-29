@@ -1,5 +1,6 @@
 import "server-only"
 
+import { getAnimeCatalog } from "./anime-api"
 import type { AnimeSummary, Paginated } from "./types"
 
 const DEFAULT_BASE_URL = "https://animexpo-anime-sdk.onrender.com"
@@ -49,29 +50,19 @@ function normalize(value: unknown) {
   return typeof value === "string" ? value.trim() : ""
 }
 
-function mapItem(raw: Record<string, unknown>): AnimeSummary | null {
-  const id = Number(raw.animExpoId ?? raw.animexpoId ?? raw.internalId)
-  const titleValue = raw.title
-  const title = normalize(typeof titleValue === "object" && titleValue !== null ? (titleValue as { english?: unknown }).english : titleValue ?? raw.name)
-  if (!Number.isSafeInteger(id) || id < 1 || !title) return null
-  return {
-    id,
-    animExpoId: id,
-    title,
-    poster: normalize(raw.poster ?? raw.image ?? raw.coverImage),
-    banner: normalize(raw.banner) || undefined,
-    description: normalize(raw.description) || undefined,
-    year: Number(raw.year) || undefined,
-    status: normalize(raw.status) || undefined,
-    score: normalize(raw.score ?? raw.rating) || undefined,
-    episodeCount: normalize(raw.episodeCount ?? raw.episodes) || undefined,
-    type: normalize(raw.type ?? raw.format) || undefined,
-    aniListId: normalize(raw.aniListId ?? raw.anilistId) || undefined,
-    malId: normalize(raw.malId) || undefined,
-    isSub: Number(raw.isSub ?? raw.sub) || 0,
-    isDub: Number(raw.isDub ?? raw.dub) || 0,
-    genres: Array.isArray(raw.genres) ? raw.genres.filter((item): item is string => typeof item === "string") : [],
-  }
+function providerRecordId(raw: Record<string, unknown>) {
+  const id = normalize(raw.id)
+  const providerId = normalize(raw.providerId)
+  if (!id || providerId !== PROVIDER_ID || !id.startsWith(`${PROVIDER_ID}:`)) return null
+  const recordId = id.slice(PROVIDER_ID.length + 1)
+  return recordId || null
+}
+
+function mapItem(raw: Record<string, unknown>, catalog: AnimeSummary[]): AnimeSummary | null {
+  const recordId = providerRecordId(raw)
+  if (!recordId) return null
+  const match = catalog.find((anime) => anime.anikotoSeriesId === recordId)
+  return match ? { ...match } : null
 }
 
 async function request(query: string, page: number, signal: AbortSignal): Promise<AnimeSummary[]> {
@@ -91,8 +82,21 @@ async function request(query: string, page: number, signal: AbortSignal): Promis
   if (!response.ok) throw new Error(`Anime SDK returned ${response.status}`)
   const payload: unknown = await response.json()
   const rows = Array.isArray(payload) ? payload : (payload as { items?: unknown[]; data?: unknown[] })?.items ?? (payload as { data?: unknown[] })?.data ?? []
-  const items = rows.filter((row): row is Record<string, unknown> => Boolean(row && typeof row === "object")).map(mapItem).filter((item): item is AnimeSummary => Boolean(item))
-  logSdk("sdk_result_count", { received: rows.length, valid: items.length })
+  if (!Array.isArray(rows)) {
+    logSdk("sdk_result_count", { received: 0, valid: 0, rejected: 0, malformed: true })
+    return []
+  }
+  const catalog = await getAnimeCatalog()
+  let rejected = 0
+  const items = rows
+    .map((row) => {
+      if (!row || typeof row !== "object") { rejected += 1; return null }
+      const item = mapItem(row as Record<string, unknown>, catalog)
+      if (!item) rejected += 1
+      return item
+    })
+    .filter((item): item is AnimeSummary => Boolean(item))
+  logSdk("sdk_result_count", { received: rows.length, valid: items.length, rejected })
   return items
 }
 

@@ -11,14 +11,14 @@ function buildSearchUrl(base, query, page = 1, provider = "anikoto") {
   return url
 }
 
-function normalizeRows(payload) {
+function normalizeRows(payload, catalog = []) {
   const rows = Array.isArray(payload) ? payload : payload?.items ?? payload?.data ?? []
   if (!Array.isArray(rows)) return []
   return rows.flatMap((raw) => {
-    if (!raw || typeof raw !== "object") return []
-    const id = Number(raw.animExpoId ?? raw.animexpoId ?? raw.internalId)
-    const title = typeof raw.title === "string" ? raw.title.trim() : typeof raw.name === "string" ? raw.name.trim() : ""
-    return Number.isSafeInteger(id) && id > 0 && title ? [{ id, title }] : []
+    if (!raw || typeof raw !== "object" || raw.providerId !== "anikoto" || typeof raw.id !== "string" || !raw.id.startsWith("anikoto:")) return []
+    const providerId = raw.id.slice("anikoto:".length)
+    const match = catalog.find((anime) => anime.anikotoSeriesId === providerId)
+    return match ? [{ ...match }] : []
   })
 }
 
@@ -30,10 +30,18 @@ test("builds the authenticated SDK search contract", () => {
   assert.equal(url.searchParams.get("page"), "2")
 })
 
-test("normalizes array, items, and data response envelopes", () => {
-  assert.deepEqual(normalizeRows([{ animExpoId: 42, title: "One Piece" }]), [{ id: 42, title: "One Piece" }])
-  assert.deepEqual(normalizeRows({ items: [{ internalId: 7, name: "Frieren" }] }), [{ id: 7, title: "Frieren" }])
-  assert.deepEqual(normalizeRows({ data: [{ id: 9, title: "ignored without internal id" }] }), [])
+test("maps the real SDK response shape through a trusted provider ID", () => {
+  const catalog = [{ id: 42, animExpoId: 42, anikotoSeriesId: "123", title: "One Piece" }]
+  assert.deepEqual(normalizeRows([{ id: "anikoto:123", title: "One Piece", catalogType: "ANIME", providerId: "anikoto" }], catalog), [catalog[0]])
+  assert.deepEqual(normalizeRows({ items: [{ id: "anikoto:999", title: "Unknown", catalogType: "ANIME", providerId: "anikoto" }] }, catalog), [])
+  assert.deepEqual(normalizeRows({ data: [{ id: "anikoto:123", title: "Wrong provider", providerId: "other" }] }, catalog), [])
+})
+
+test("rejects malformed records and duplicate mapped results safely", () => {
+  const catalog = [{ id: 42, animExpoId: 42, anikotoSeriesId: "123", title: "One Piece" }]
+  const rows = [{ id: "anikoto:123", title: "One Piece", providerId: "anikoto" }, null, { title: "No ID" }]
+  assert.deepEqual(normalizeRows(rows, catalog), [catalog[0]])
+  assert.equal(new Set(normalizeRows([rows[0], rows[0]], catalog).map((item) => item.id)).size, 1)
 })
 
 test("rejects malformed results without affecting existing results", () => {
