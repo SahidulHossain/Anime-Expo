@@ -5,6 +5,7 @@ import type { AnimeSummary, Paginated } from "./types"
 const DEFAULT_BASE_URL = "https://animexpo-anime-sdk.onrender.com"
 const REQUEST_TIMEOUT_MS = 8000
 const GRACE_PERIOD_MS = 250
+const PROVIDER_ID = "anikoto"
 const COOLDOWN_MS = 30_000
 const FAILURE_LIMIT = 3
 
@@ -40,9 +41,9 @@ function normalize(value: unknown) {
 }
 
 function mapItem(raw: Record<string, unknown>): AnimeSummary | null {
-  const id = Number(raw.id ?? raw.animExpoId ?? raw.animeId)
-  const title = normalize(raw.title ?? raw.name)
-  if (!Number.isFinite(id) || !title) return null
+  const id = Number(raw.animExpoId ?? raw.animexpoId ?? raw.internalId)
+  const title = normalize(raw.title ?? raw.name ?? (raw.title as { english?: string } | undefined)?.english)
+  if (!Number.isSafeInteger(id) || id < 1 || !title) return null
   return {
     id,
     animExpoId: id,
@@ -68,6 +69,7 @@ async function request(query: string, page: number, signal: AbortSignal): Promis
   const path = process.env.ANIME_SDK_SEARCH_PATH || "/search"
   const url = new URL(path, base)
   url.searchParams.set("q", query)
+  url.searchParams.set("provider", process.env.ANIME_SDK_PROVIDER || PROVIDER_ID)
   url.searchParams.set("page", String(page))
   const response = await fetch(url, {
     signal,
