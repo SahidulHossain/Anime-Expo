@@ -13,8 +13,17 @@ type SdkState = { failures: number; openedAt: number }
 let state: SdkState = { failures: 0, openedAt: 0 }
 let inFlight = new Map<string, Promise<AnimeSummary[]>>()
 
+function logSdk(event: string, details: Record<string, unknown> = {}) {
+  console.info(`[anime-sdk] ${JSON.stringify({ event, ...details })}`)
+}
+
 function enabled() {
-  return process.env.ANIME_SDK_ENABLED === "true" && Boolean(process.env.ANIME_SDK_API_TOKEN)
+  const flag = process.env.ANIME_SDK_ENABLED?.trim().toLowerCase()
+  const baseConfigured = Boolean(process.env.ANIME_SDK_BASE_URL?.trim())
+  const tokenConfigured = Boolean(process.env.ANIME_SDK_API_TOKEN?.trim())
+  const isEnabled = flag === "true" && baseConfigured && tokenConfigured
+  logSdk("sdk_enabled", { enabled: isEnabled, flag, baseConfigured, tokenConfigured })
+  return isEnabled
 }
 
 function canRequest() {
@@ -42,7 +51,8 @@ function normalize(value: unknown) {
 
 function mapItem(raw: Record<string, unknown>): AnimeSummary | null {
   const id = Number(raw.animExpoId ?? raw.animexpoId ?? raw.internalId)
-  const title = normalize(raw.title ?? raw.name ?? (raw.title as { english?: string } | undefined)?.english)
+  const titleValue = raw.title
+  const title = normalize(typeof titleValue === "object" && titleValue !== null ? (titleValue as { english?: unknown }).english : titleValue ?? raw.name)
   if (!Number.isSafeInteger(id) || id < 1 || !title) return null
   return {
     id,
@@ -65,8 +75,9 @@ function mapItem(raw: Record<string, unknown>): AnimeSummary | null {
 }
 
 async function request(query: string, page: number, signal: AbortSignal): Promise<AnimeSummary[]> {
-  const base = process.env.ANIME_SDK_BASE_URL || DEFAULT_BASE_URL
-  const path = process.env.ANIME_SDK_SEARCH_PATH || "/search"
+  const base = process.env.ANIME_SDK_BASE_URL?.trim() || DEFAULT_BASE_URL
+  const path = process.env.ANIME_SDK_SEARCH_PATH?.trim() || "/search"
+  logSdk("sdk_request_started", { queryLength: query.length, page, provider: process.env.ANIME_SDK_PROVIDER || PROVIDER_ID })
   const url = new URL(path, base)
   url.searchParams.set("q", query)
   url.searchParams.set("provider", process.env.ANIME_SDK_PROVIDER || PROVIDER_ID)
@@ -76,10 +87,13 @@ async function request(query: string, page: number, signal: AbortSignal): Promis
     headers: { Accept: "application/json", Authorization: `Bearer ${process.env.ANIME_SDK_API_TOKEN}` },
     cache: "no-store",
   })
+  logSdk("sdk_request_status", { status: response.status, ok: response.ok })
   if (!response.ok) throw new Error(`Anime SDK returned ${response.status}`)
   const payload: unknown = await response.json()
   const rows = Array.isArray(payload) ? payload : (payload as { items?: unknown[]; data?: unknown[] })?.items ?? (payload as { data?: unknown[] })?.data ?? []
-  return rows.filter((row): row is Record<string, unknown> => Boolean(row && typeof row === "object")).map(mapItem).filter((item): item is AnimeSummary => Boolean(item))
+  const items = rows.filter((row): row is Record<string, unknown> => Boolean(row && typeof row === "object")).map(mapItem).filter((item): item is AnimeSummary => Boolean(item))
+  logSdk("sdk_result_count", { received: rows.length, valid: items.length })
+  return items
 }
 
 function getResults(query: string, page: number) {
@@ -88,7 +102,7 @@ function getResults(query: string, page: number) {
   if (existing) return existing
   const controller = new AbortController()
   const timer = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS)
-  const promise = request(query, page, controller.signal).then((items) => { recordSuccess(); return items }).catch((error) => { recordFailure(); return [] }).finally(() => { clearTimeout(timer); inFlight.delete(key) })
+  const promise = request(query, page, controller.signal).then((items) => { recordSuccess(); return items }).catch((error: unknown) => { recordFailure(); logSdk("sdk_failure_reason", { reason: error instanceof DOMException && error.name === "AbortError" ? "timeout" : error instanceof Error ? error.message.slice(0, 120) : "unknown" }); return [] }).finally(() => { clearTimeout(timer); inFlight.delete(key) })
   inFlight.set(key, promise)
   return promise
 }
@@ -100,5 +114,6 @@ export async function mergeOptionalSdkSearch(existing: Paginated<AnimeSummary>, 
   if (!items.length) return existing
   const seen = new Set(existing.items.map((item) => `${item.id}:${item.title.toLowerCase()}`))
   const additions = items.filter((item) => !seen.has(`${item.id}:${item.title.toLowerCase()}`))
+  logSdk("sdk_merge_count", { received: items.length, merged: additions.length })
   return { ...existing, items: [...existing.items, ...additions], total: existing.total + additions.length }
 }
