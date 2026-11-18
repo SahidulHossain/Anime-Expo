@@ -61,19 +61,10 @@ export function Player({ anime, episode }: { anime: AnimeDetail; episode: Episod
   const aniEmbedUrl = anime.aniListId
     ? `https://aniembed.se/e/${encodeURIComponent(anime.aniListId)}/${encodeURIComponent(String(episode.number))}?lang=${type}&autoplay=0`
     : undefined
-  const animeEmbedUrl = anime.aniListId && episode.episodeNumber
-    ? (() => {
-        const options = new URLSearchParams({
-          track: type,
-          autoPlay: "0",
-          accent: "e9164b",
-          logo: "https://hebbkx1anhila5yf.public.blob.vercel-storage.com/file_00000000670c8210ab91b28e47725cc0%281%29.png-9gQdVGn8Ztc9kZPcjZqtCoNLfwTzTQ.jpeg",
-          logoPos: "br",
-        })
-        return `https://animeembed.com/embed/ani/${encodeURIComponent(anime.aniListId)}/${encodeURIComponent(String(episode.episodeNumber))}?${options.toString()}`
-      })()
+  const anixoEmbedUrl = anime.aniListId && episode.episodeNumber
+    ? `https://anixo.buzz/embed/ani/${encodeURIComponent(anime.aniListId)}/${encodeURIComponent(String(episode.episodeNumber))}?player=custom&track=${type}`
     : undefined
-  const streamUrl = server === 2 ? aniEmbedUrl : server === 3 ? animeEmbedUrl : serverOneUrl
+  const streamUrl = server === 2 ? aniEmbedUrl : server === 3 ? anixoEmbedUrl : serverOneUrl
   const downloadUrl = anime.malId
     ? `https://zokoanime.video/download/mal/${encodeURIComponent(anime.malId)}/${encodeURIComponent(String(episode.number))}/${type}`
     : undefined
@@ -204,7 +195,7 @@ export function Player({ anime, episode }: { anime: AnimeDetail; episode: Episod
                   <div className="flex min-w-0 flex-1 overflow-hidden rounded-md border border-border">
                     {canUseServerOne && <button type="button" onClick={() => { setType(t); setServer(1) }} className={cn("flex-1 px-2.5 py-1.5 text-xs font-bold transition-colors", type === t && server === 1 ? "bg-primary text-primary-foreground" : "bg-secondary/50 text-muted-foreground hover:text-foreground")}>Server 1</button>}
                     {canUseServerTwo && <button type="button" onClick={() => { setType(t); setServer(2) }} className={cn("flex-1 px-2.5 py-1.5 text-xs font-bold transition-colors", type === t && server === 2 ? "bg-primary text-primary-foreground" : "bg-secondary/50 text-muted-foreground hover:text-foreground")}>Server 2 · FHD · 4K</button>}
-                    {canUseServerThree && <button type="button" onClick={() => { setType(t); setServer(3) }} className={cn("flex-1 px-2.5 py-1.5 text-xs font-bold transition-colors", type === t && server === 3 ? "bg-primary text-primary-foreground" : "bg-secondary/50 text-muted-foreground hover:text-foreground")}>Server 3 · AnimeEmbed</button>}
+                    {canUseServerThree && <button type="button" onClick={() => { setType(t); setServer(3) }} className={cn("flex-1 px-2.5 py-1.5 text-xs font-bold transition-colors", type === t && server === 3 ? "bg-primary text-primary-foreground" : "bg-secondary/50 text-muted-foreground hover:text-foreground")}>Server 3</button>}
                   </div>
                 </div>
               ))}
