@@ -19,10 +19,12 @@ export default async function HomePage() {
   const uniqueItems = Array.from(new Map(items.map((item) => [item.id, item])).values())
   const featured = uniqueItems.find((a) => a.banner) ?? uniqueItems[0]
   const slides = uniqueItems.filter((a) => a.banner).slice(0, 6)
-  const trending = [...uniqueItems]
+  const ranked = [...uniqueItems]
     .filter((a) => a.score)
     .sort((a, b) => Number(b.score) - Number(a.score))
-    .slice(0, 12)
+  const trending = ranked.slice(0, 12)
+  const trendingIds = new Set(trending.map((item) => item.id))
+  const popular = ranked.filter((item) => !trendingIds.has(item.id)).slice(0, 12)
   const latest = uniqueItems.slice(0, 18)
   const movies = uniqueItems.filter((a) => ["movie", "film"].includes(a.type?.trim().toLowerCase() || "")).sort((a, b) => Number(b.score || 0) - Number(a.score || 0)).slice(0, 24)
   const topRated = getTopRatedPicks(catalog)
@@ -48,6 +50,7 @@ export default async function HomePage() {
         <section className="mx-auto max-w-7xl px-4 py-8">
           <SectionHeading
             title="Trending"
+            subtitle="Highly rated picks from the catalog"
             action={
               <div className="flex items-center gap-3">
                 <Link href="/browse" className="text-sm font-medium text-muted-foreground hover:text-primary">Show more</Link>
@@ -58,21 +61,21 @@ export default async function HomePage() {
         </section>
       )}
 
-      <section className="mx-auto max-w-7xl px-4 py-8">
-        <SectionHeading title="Popular" action={<Link href="/browse" className="text-sm font-medium text-muted-foreground hover:text-primary">See all</Link>} />
-        <AnimeCarousel items={trending.length > 0 ? trending : latest} />
-      </section>
+      {popular.length > 0 && <section className="mx-auto max-w-7xl px-4 py-8">
+        <SectionHeading title="Popular" subtitle="More highly rated titles to explore" action={<Link href="/browse" className="text-sm font-medium text-muted-foreground hover:text-primary">See all</Link>} />
+        <AnimeCarousel items={popular} />
+      </section>}
 
       {movies.length > 0 && (
         <section className="mx-auto max-w-7xl px-4 py-8">
-          <SectionHeading title="Top Movies" action={<Link href="/browse?type=Movie" className="text-sm font-medium text-muted-foreground hover:text-primary">See all</Link>} />
+          <SectionHeading title="Top Movies" subtitle="Feature-length stories from the catalog" action={<Link href="/browse?type=Movie" className="text-sm font-medium text-muted-foreground hover:text-primary">See all</Link>} />
           <AnimeCarousel items={movies} />
         </section>
       )}
 
       {topRated.length > 0 && (
         <section className="mx-auto max-w-7xl px-4 py-8">
-          <SectionHeading title="Top Rated" action={<Link href="/top-rated" className="text-sm font-medium text-muted-foreground hover:text-primary">View all</Link>} />
+          <SectionHeading title="Top Rated" subtitle="The complete curated collection" action={<Link href="/top-rated" className="text-sm font-medium text-muted-foreground hover:text-primary">View all</Link>} />
           <AnimeCarousel items={topRated} />
         </section>
       )}
@@ -84,7 +87,7 @@ export default async function HomePage() {
 
       {upcoming.length > 0 && (
         <section className="mx-auto max-w-7xl px-4 py-8">
-          <SectionHeading title="Upcoming" />
+          <SectionHeading title="Upcoming" subtitle="Coming soon to the catalog" />
           <AnimeCarousel items={upcoming} />
         </section>
       )}

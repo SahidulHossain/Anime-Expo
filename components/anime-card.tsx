@@ -7,10 +7,10 @@ export function AnimeCard({ anime, priority = false }: { anime: AnimeSummary; pr
   return (
     <Link
       href={`/anime/${anime.id}`}
-      className="group block overflow-hidden rounded-lg border border-border/60 bg-card transition-[border-color,transform] duration-150 hover:-translate-y-0.5 hover:border-primary/60 motion-reduce:transform-none"
+      className="group relative block overflow-hidden rounded-xl border border-border/60 bg-card shadow-sm shadow-black/10 transition-[border-color,box-shadow,transform] duration-250 hover:z-10 hover:-translate-y-1 hover:border-primary/55 hover:shadow-xl hover:shadow-black/35 focus-visible:z-10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary motion-reduce:transform-none motion-reduce:transition-none"
     >
       <div className="relative">
-        <PosterImage src={anime.poster} alt={anime.title} className="aspect-[2/3]" priority={priority} />
+        <PosterImage src={anime.poster} alt={anime.title} className="aspect-[2/3] transition-transform duration-300 group-hover:scale-[1.025]" priority={priority} />
 
         {anime.score && (
           <span className="absolute left-2 top-2 inline-flex items-center gap-1 rounded-md bg-background/85 px-1.5 py-0.5 text-xs font-semibold backdrop-blur-sm">
@@ -34,7 +34,7 @@ export function AnimeCard({ anime, priority = false }: { anime: AnimeSummary; pr
       </div>
 
       <div className="p-2.5">
-        <h3 className="line-clamp-2 min-h-9 text-[13px] font-semibold leading-5 text-foreground group-hover:text-primary">
+        <h3 className="line-clamp-2 min-h-9 text-[13px] font-semibold leading-5 text-foreground transition-colors duration-200 group-hover:text-primary">
           {anime.title}
         </h3>
         <p className="mt-1 line-clamp-1 text-[11px] text-muted-foreground">
@@ -60,7 +60,7 @@ export function AnimeCardGrid({ items }: { items: AnimeSummary[] }) {
 export function AnimeCardSkeleton() {
   return (
     <div className="overflow-hidden rounded-lg border border-border/60 bg-card">
-      <div className="aspect-[2/3] animate-pulse bg-secondary" />
+      <div className="poster-skeleton aspect-[2/3] bg-secondary" />
       <div className="space-y-2 p-2.5">
         <div className="h-3.5 w-full animate-pulse rounded bg-secondary" />
         <div className="h-3 w-2/3 animate-pulse rounded bg-secondary" />
