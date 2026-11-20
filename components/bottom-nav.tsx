@@ -16,7 +16,7 @@ const ITEMS = [
 export function BottomNav() {
   const pathname = usePathname()
   return (
-    <nav aria-label="Primary navigation" className="fixed inset-x-3 bottom-[max(0.75rem,env(safe-area-inset-bottom))] z-50 mx-auto max-w-xl rounded-2xl border border-white/10 bg-black/80 p-1.5 shadow-2xl shadow-black/40 backdrop-blur-xl md:inset-x-4 md:bottom-4">
+    <nav aria-label="Primary navigation" className={cn("z-50 mx-auto max-w-xl rounded-2xl border border-white/10 bg-black/80 p-1.5 shadow-2xl shadow-black/40 backdrop-blur-xl", pathname.startsWith("/watch") ? "relative mt-3 w-[calc(100%-1.5rem)]" : "fixed inset-x-3 bottom-[max(0.75rem,env(safe-area-inset-bottom))] md:inset-x-4 md:bottom-4")}>
       <div className="grid grid-cols-5 gap-1">
         {ITEMS.map(({ href, label, icon: Icon }) => {
           const active = href === "/" ? pathname === "/" : pathname.startsWith(href)

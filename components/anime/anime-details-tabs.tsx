@@ -25,16 +25,16 @@ export function AnimeDetailsTabs({ anime, related }: { anime: AnimeDetail; relat
   const description = anime.description ?? "Synopsis unavailable."
 
   return (
-    <section className="mt-8 pb-12">
+    <section className="mt-5 pb-12 sm:mt-7">
       <div className="flex border-b border-white/10" role="tablist" aria-label="Anime details">
-        {tabs.map((tab) => <button key={tab} type="button" role="tab" aria-selected={active === tab} onClick={() => setActive(tab)} className={cn("border-b-2 px-4 py-3 text-sm font-semibold transition-colors", active === tab ? "border-primary text-primary" : "border-transparent text-muted-foreground hover:text-white")}>{tab}</button>)}
+        {tabs.map((tab) => <button key={tab} type="button" role="tab" aria-selected={active === tab} onClick={() => setActive(tab)} className={cn("relative min-h-11 px-4 py-2.5 text-xs font-semibold transition-colors after:absolute after:inset-x-3 after:-bottom-px after:h-0.5 after:rounded-full after:transition-colors sm:px-5 sm:text-sm", active === tab ? "text-white after:bg-primary" : "text-muted-foreground after:bg-transparent hover:text-white")}>{tab}</button>)}
       </div>
 
-      <div key={active} className="details-panel pt-6">
-        {active === "Home" && <div className="grid gap-6 lg:grid-cols-[1.4fr_1fr]">
+      <div key={active} className="details-panel pt-4 sm:pt-5">
+        {active === "Home" && <div className="grid gap-5 lg:grid-cols-[1.4fr_1fr]">
           <div>
-            <h2 className="mb-3 flex items-center gap-2 text-lg font-bold"><Info className="size-4 text-primary" />Synopsis</h2>
-            <p className={cn("text-sm leading-7 text-muted-foreground", !expanded && "line-clamp-4")}>{description}</p>
+            <h2 className="mb-2 flex items-center gap-2 text-base font-bold sm:text-lg"><Info className="size-4 text-primary" />Synopsis</h2>
+            <p className={cn("max-w-3xl text-[13px] leading-6 text-muted-foreground sm:text-sm sm:leading-7", !expanded && "line-clamp-4")}>{description}</p>
             {description.length > 320 && <button type="button" onClick={() => setExpanded(!expanded)} className="mt-2 text-sm font-semibold text-primary">{expanded ? "Less" : "More"}</button>}
           </div>
           <dl className="grid grid-cols-2 gap-x-5 gap-y-4 rounded-xl border border-white/[0.08] bg-white/[0.025] p-4 text-sm sm:rounded-2xl sm:p-5">
