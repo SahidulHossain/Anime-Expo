@@ -41,7 +41,7 @@ function storeCache(key: string, entry: CacheEntry) {
 function clean(value: unknown): string | undefined {
   if (typeof value !== "string") return undefined
   const result = value.trim()
-  return result && !/^(?:n\/?a|unknown|null|undefined)$/i.test(result) ? result : undefined
+  return result && !/^(?:n\/?a|unknown|null|undefined|0)$/i.test(result) ? result : undefined
 }
 
 function normalizeTitle(value: string): string {
@@ -92,10 +92,10 @@ function extractMetadata(resource: KitsuResource, included: KitsuResource[]): Ki
   const categories = categoryRefs.map((item) => categoriesById.get(item.id ?? "")).filter((value): value is string => Boolean(value))
   const averageRating = clean(attributes.averageRating)
   const parsedRating = averageRating ? Number(averageRating) : NaN
-  const rating = Number.isFinite(parsedRating) && parsedRating >= 0 && parsedRating <= 100 ? parsedRating : NaN
+  const rating = Number.isFinite(parsedRating) && parsedRating > 0 && parsedRating <= 100 ? parsedRating : NaN
   const startDate = clean(attributes.startDate)
   const endDate = clean(attributes.endDate)
-  const year = startDate ? Number(startDate.slice(0, 4)) : undefined
+  const year = startDate && /^\d{4}(?:-\d{2}(?:-\d{2})?)?$/.test(startDate) ? Number(startDate.slice(0, 4)) : undefined
   const candidateTrailerId = clean(attributes.youtubeVideoId)
   const trailerId = candidateTrailerId && /^[A-Za-z0-9_-]{11}$/.test(candidateTrailerId) ? candidateTrailerId : undefined
   const episodeCount = typeof attributes.episodeCount === "number" && attributes.episodeCount > 0 ? String(attributes.episodeCount) : undefined

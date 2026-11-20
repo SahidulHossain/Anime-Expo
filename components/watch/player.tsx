@@ -31,12 +31,11 @@ export function Player({ anime, episode }: { anime: AnimeDetail; episode: Episod
     const list: StreamType[] = []
     if (episode.sub) list.push("sub")
     if (episode.dub) list.push("dub")
-    return list.length ? list : ["sub"]
+    return list
   }, [episode, anime])
 
   const requested = (params.get("type") as StreamType) || available[0]
   const [type, setType] = useState<StreamType>(available.includes(requested) ? requested : available[0])
-  const [server, setServer] = useState<1 | 2 | 3>(1)
   const [loadError, setLoadError] = useState(false)
   const [autoNext, setAutoNext] = useState(false)
   const [filter, setFilter] = useState("")
@@ -56,21 +55,11 @@ export function Player({ anime, episode }: { anime: AnimeDetail; episode: Episod
   const prev = index > 0 ? anime.episodes[index - 1] : undefined
   const next = index >= 0 && index < anime.episodes.length - 1 ? anime.episodes[index + 1] : undefined
 
-  const serverOneUrl = type === "dub" ? episode.dub : episode.sub
-
-  const aniEmbedUrl = anime.aniListId
-    ? `https://aniembed.se/e/${encodeURIComponent(anime.aniListId)}/${encodeURIComponent(String(episode.number))}?lang=${type}&autoplay=0`
-    : undefined
-  const anixoEmbedUrl = anime.aniListId && episode.episodeNumber
-    ? `https://anixo.buzz/embed/ani/${encodeURIComponent(anime.aniListId)}/${encodeURIComponent(String(episode.episodeNumber))}?player=custom&track=${type}`
-    : undefined
-  const streamUrl = server === 2 ? aniEmbedUrl : server === 3 ? anixoEmbedUrl : serverOneUrl
+  const streamUrl = type === "dub" ? episode.dub : episode.sub
   const downloadUrl = anime.malId
     ? `https://zokoanime.video/download/mal/${encodeURIComponent(anime.malId)}/${encodeURIComponent(String(episode.number))}/${type}`
     : undefined
-  const canUseServerOne = Boolean(serverOneUrl)
-  const canUseServerTwo = Boolean(anime.aniListId)
-  const canUseServerThree = Boolean(anime.aniListId && episode.episodeNumber)
+  const hasStream = Boolean(streamUrl)
 
   useEffect(() => {
     setLoadError(false)
@@ -136,7 +125,7 @@ export function Player({ anime, episode }: { anime: AnimeDetail; episode: Episod
             <div className="relative aspect-video w-full">
               {streamUrl && !loadError ? (
                 <iframe
-                  key={`${episode.id}-${type}-${server}`}
+                  key={`${episode.id}-${type}`}
                   src={streamUrl}
                   title={`${anime.title} Episode ${episode.number}`}
                   allow="autoplay; encrypted-media; picture-in-picture; fullscreen" referrerPolicy="no-referrer"
@@ -186,19 +175,16 @@ export function Player({ anime, episode }: { anime: AnimeDetail; episode: Episod
             </button>
           </div>
 
-          {/* Toolbar: server select, fullscreen, auto-next */}
+          {/* Anikoto stream and playback controls */}
           <div className="mt-3 rounded-xl border border-white/10 bg-card/90 p-2.5 shadow-lg shadow-black/10 sm:mt-4 sm:p-3">
             <div className="grid gap-2.5">
               {available.map((t) => (
                 <div key={t} className="grid grid-cols-[2.25rem_minmax(0,1fr)] items-center gap-2">
                   <span className="text-[10px] font-extrabold uppercase tracking-wider text-muted-foreground sm:text-xs">{t}</span>
-                  <div className="flex min-w-0 overflow-hidden rounded-lg border border-white/10 bg-black/25">
-                    {canUseServerOne && <button type="button" onClick={() => { setType(t); setServer(1) }} aria-pressed={type === t && server === 1} className={cn("min-h-10 min-w-0 flex-1 whitespace-nowrap px-1 text-[9px] font-bold leading-tight transition-colors duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary sm:text-[11px]", type === t && server === 1 ? "bg-gradient-to-r from-red-800 to-primary text-white" : "text-muted-foreground hover:bg-white/5 hover:text-foreground")}>Server 1 · FHD</button>}
-                    {canUseServerTwo && <button type="button" onClick={() => { setType(t); setServer(2) }} aria-pressed={type === t && server === 2} className={cn("min-h-10 min-w-0 flex-1 whitespace-nowrap px-1 text-[9px] font-bold leading-tight transition-colors duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary sm:text-[11px]", type === t && server === 2 ? "bg-gradient-to-r from-red-800 to-primary text-white" : "text-muted-foreground hover:bg-white/5 hover:text-foreground")}>Server 2 · FHD / 4K</button>}
-                    {canUseServerThree && <button type="button" onClick={() => { setType(t); setServer(3) }} aria-pressed={type === t && server === 3} className={cn("min-h-10 min-w-0 flex-1 whitespace-nowrap px-1 text-[9px] font-bold leading-tight transition-colors duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary sm:text-[11px]", type === t && server === 3 ? "bg-gradient-to-r from-red-800 to-primary text-white" : "text-muted-foreground hover:bg-white/5 hover:text-foreground")}>Server 3 · AnimeEmbed</button>}
-                  </div>
+                  <button type="button" onClick={() => setType(t)} aria-pressed={type === t} className={cn("min-h-10 min-w-0 rounded-lg border border-white/10 px-3 text-left text-xs font-bold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary sm:text-sm", type === t ? "border-primary/40 bg-primary/15 text-white" : "bg-black/25 text-muted-foreground hover:bg-white/5 hover:text-foreground")}>Anikoto stream</button>
                 </div>
               ))}
+              {!hasStream && <p className="text-xs text-muted-foreground">No Anikoto stream is available for this episode.</p>}
             </div>
 
             <div className="mt-2.5 grid grid-cols-2 gap-2 border-t border-white/10 pt-2.5 sm:flex sm:flex-wrap sm:items-center">

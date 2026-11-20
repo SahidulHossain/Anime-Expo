@@ -29,9 +29,9 @@ export function SiteHeader() {
 
   return (
     <header className="sticky top-0 z-40 border-b border-white/[0.06] bg-background/80 shadow-sm shadow-black/10 backdrop-blur-xl">
-      <div className="mx-auto flex h-16 max-w-7xl items-center gap-4 px-4">
+      <div className="mx-auto flex h-14 max-w-7xl items-center gap-4 px-4">
         <Link href="/" className="shrink-0" aria-label="AnimExpo home">
-          <img src={LOGO_URL} alt="AnimExpo" className="h-8 w-auto object-contain sm:h-9" />
+          <img src={LOGO_URL} alt="AnimExpo" className="h-7 w-auto object-contain sm:h-8" />
         </Link>
 
         <nav className="ml-4 hidden items-center gap-1 md:flex">

@@ -15,7 +15,7 @@ export default async function AnimeDetailPage({ params }: { params: Promise<{ id
   const { id } = await params
   const anime = await getAnimeDetail(id)
   if (!anime) notFound()
-  const related = await getRecentAnime(1, 100).then((data) => data.items.filter((item) => item.id !== anime.id)).catch(() => [])
+  const related = await getRecentAnime(1, 24).then((data) => data.items.filter((item) => item.id !== anime.id)).catch(() => [])
 
   return <AnimeDetailExperience anime={anime} related={related} />
 }
