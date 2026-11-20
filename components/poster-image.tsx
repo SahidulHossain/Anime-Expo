@@ -17,7 +17,7 @@ export function PosterImage({ src, alt, className, priority = false }: PosterIma
 
   return (
     <div className={cn("relative overflow-hidden bg-secondary", className)}>
-      {!loaded && !errored && <div className="absolute inset-0 animate-pulse bg-secondary" />}
+      {!loaded && !errored && <div className="poster-skeleton absolute inset-0 bg-secondary" />}
       {src && !errored ? (
         // eslint-disable-next-line @next/next/no-img-element
         <img

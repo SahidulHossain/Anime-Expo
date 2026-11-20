@@ -22,7 +22,7 @@ export function AnimeDetailsTabs({ anime, related }: { anime: AnimeDetail; relat
   const seasons = related.filter((item) => matchesFranchise(item) && !["movie", "film"].includes(item.type?.trim().toLowerCase() || ""))
   const movies = related.filter((item) => matchesFranchise(item) && ["movie", "film"].includes(item.type?.trim().toLowerCase() || ""))
   const similar = related.filter((item) => item.id !== anime.id && item.genres.some((genre) => anime.genres.includes(genre))).sort((a, b) => b.genres.filter((g) => anime.genres.includes(g)).length - a.genres.filter((g) => anime.genres.includes(g)).length || Number(b.score || 0) - Number(a.score || 0)).slice(0, 12)
-  const description = anime.description ?? "No synopsis is available for this title yet."
+  const description = anime.description ?? "Synopsis unavailable."
 
   return (
     <section className="mt-8 pb-12">
@@ -30,20 +30,18 @@ export function AnimeDetailsTabs({ anime, related }: { anime: AnimeDetail; relat
         {tabs.map((tab) => <button key={tab} type="button" role="tab" aria-selected={active === tab} onClick={() => setActive(tab)} className={cn("border-b-2 px-4 py-3 text-sm font-semibold transition-colors", active === tab ? "border-primary text-primary" : "border-transparent text-muted-foreground hover:text-white")}>{tab}</button>)}
       </div>
 
-      <div className="pt-6">
+      <div key={active} className="details-panel pt-6">
         {active === "Home" && <div className="grid gap-6 lg:grid-cols-[1.4fr_1fr]">
           <div>
             <h2 className="mb-3 flex items-center gap-2 text-lg font-bold"><Info className="size-4 text-primary" />Synopsis</h2>
             <p className={cn("text-sm leading-7 text-muted-foreground", !expanded && "line-clamp-4")}>{description}</p>
             {description.length > 320 && <button type="button" onClick={() => setExpanded(!expanded)} className="mt-2 text-sm font-semibold text-primary">{expanded ? "Less" : "More"}</button>}
           </div>
-          <dl className="grid grid-cols-2 gap-3 rounded-2xl border border-white/10 bg-white/[0.03] p-4 text-sm">
-            <InfoRow label="Status" value={anime.status || "Unavailable"} />
-            <InfoRow label="Format" value={anime.type || "Unavailable"} />
-            <InfoRow label="Release year" value={String(anime.year || "Unavailable")} />
-            <InfoRow label="Episodes" value={anime.episodeCount || String(anime.episodes.length)} />
-            <InfoRow label="Studio" value="Unavailable" />
-            <InfoRow label="Members" value="Unavailable" />
+          <dl className="grid grid-cols-2 gap-x-5 gap-y-4 rounded-xl border border-white/[0.08] bg-white/[0.025] p-4 text-sm sm:rounded-2xl sm:p-5">
+            {anime.status && <InfoRow label="Status" value={anime.status} />}
+            {anime.type && <InfoRow label="Format" value={anime.type} />}
+            {anime.year && <InfoRow label="Release year" value={String(anime.year)} />}
+            {(anime.episodeCount || anime.episodes.length > 0) && <InfoRow label="Episodes" value={String(anime.episodeCount || anime.episodes.length)} />}
           </dl>
           <div className="lg:col-span-2 flex flex-wrap gap-2">{anime.genres.map((genre) => <a key={genre} href={`/browse?genre=${encodeURIComponent(genre)}`} className="rounded-full border border-white/10 px-3 py-1.5 text-xs text-muted-foreground hover:border-primary/50 hover:text-primary">{genre}</a>)}</div>
         </div>}

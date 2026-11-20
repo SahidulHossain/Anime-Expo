@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server"
 import { searchAnime } from "@/lib/anime-api"
+import { mergeOptionalSdkSearch } from "@/lib/anime-sdk"
 
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url)
@@ -12,7 +13,8 @@ export async function GET(request: Request) {
 
   try {
     const data = await searchAnime(query, page)
-    return NextResponse.json(data)
+    const merged = await mergeOptionalSdkSearch(data, query, page)
+    return NextResponse.json(merged)
   } catch {
     return NextResponse.json({ error: "Search failed." }, { status: 502 })
   }

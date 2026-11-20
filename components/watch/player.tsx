@@ -132,7 +132,7 @@ export function Player({ anime, episode }: { anime: AnimeDetail; episode: Episod
       <div className="grid gap-6 lg:grid-cols-[1fr_320px]">
         <div className="min-w-0">
           {/* Player */}
-          <div ref={containerRef} className="overflow-hidden rounded-xl border border-border/60 bg-black">
+          <div ref={containerRef} className="overflow-hidden rounded-2xl border border-white/10 bg-black shadow-2xl shadow-black/30">
             <div className="relative aspect-video w-full">
               {streamUrl && !loadError ? (
                 <iframe
@@ -193,9 +193,9 @@ export function Player({ anime, episode }: { anime: AnimeDetail; episode: Episod
                 <div key={t} className="flex items-center gap-2">
                   <span className="w-8 text-xs font-bold uppercase text-muted-foreground">{t}</span>
                   <div className="flex min-w-0 flex-1 overflow-hidden rounded-md border border-border">
-                    {canUseServerOne && <button type="button" onClick={() => { setType(t); setServer(1) }} className={cn("flex-1 px-2.5 py-1.5 text-xs font-bold transition-colors", type === t && server === 1 ? "bg-primary text-primary-foreground" : "bg-secondary/50 text-muted-foreground hover:text-foreground")}>Server 1</button>}
-                    {canUseServerTwo && <button type="button" onClick={() => { setType(t); setServer(2) }} className={cn("flex-1 px-2.5 py-1.5 text-xs font-bold transition-colors", type === t && server === 2 ? "bg-primary text-primary-foreground" : "bg-secondary/50 text-muted-foreground hover:text-foreground")}>Server 2 · FHD · 4K</button>}
-                    {canUseServerThree && <button type="button" onClick={() => { setType(t); setServer(3) }} className={cn("flex-1 px-2.5 py-1.5 text-xs font-bold transition-colors", type === t && server === 3 ? "bg-primary text-primary-foreground" : "bg-secondary/50 text-muted-foreground hover:text-foreground")}>Server 3</button>}
+                    {canUseServerOne && <button type="button" onClick={() => { setType(t); setServer(1) }} aria-pressed={type === t && server === 1} className={cn("min-h-10 flex-1 px-2.5 py-2 text-xs font-bold transition-colors duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary", type === t && server === 1 ? "bg-primary text-primary-foreground" : "bg-secondary/50 text-muted-foreground hover:text-foreground")}>Server 1</button>}
+                    {canUseServerTwo && <button type="button" onClick={() => { setType(t); setServer(2) }} aria-pressed={type === t && server === 2} className={cn("min-h-10 flex-1 px-2.5 py-2 text-xs font-bold transition-colors duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary", type === t && server === 2 ? "bg-primary text-primary-foreground" : "bg-secondary/50 text-muted-foreground hover:text-foreground")}>Server 2 · FHD · 4K</button>}
+                    {canUseServerThree && <button type="button" onClick={() => { setType(t); setServer(3) }} aria-pressed={type === t && server === 3} className={cn("min-h-10 flex-1 px-2.5 py-2 text-xs font-bold transition-colors duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary", type === t && server === 3 ? "bg-primary text-primary-foreground" : "bg-secondary/50 text-muted-foreground hover:text-foreground")}>Server 3</button>}
                   </div>
                 </div>
               ))}
@@ -266,7 +266,7 @@ export function Player({ anime, episode }: { anime: AnimeDetail; episode: Episod
                   <span className="text-xs text-muted-foreground">{anime.episodes.length}</span>
                 </div>
                 <div className="flex rounded-md border border-border p-0.5 text-[11px] font-semibold">
-                  {(["compact", "expanded"] as const).map((layout) => <button key={layout} type="button" onClick={() => changeEpisodeLayout(layout)} className={cn("rounded px-2 py-1 capitalize", episodeLayout === layout ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground")}>{layout}</button>)}
+                  {(["compact", "expanded"] as const).map((layout) => <button key={layout} type="button" onClick={() => changeEpisodeLayout(layout)} aria-pressed={episodeLayout === layout} className={cn("rounded px-2 py-1 capitalize transition-colors duration-200", episodeLayout === layout ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground")}>{layout}</button>)}
                 </div>
               </div>
               <div className="relative">
@@ -286,7 +286,7 @@ export function Player({ anime, episode }: { anime: AnimeDetail; episode: Episod
                 {filteredEpisodes.map((ep) => {
                   const active = ep.id === episode.id
                   const watched = history.some((item) => item.animeId === anime.id && item.episodeId === ep.id)
-                  return <button key={ep.id} type="button" onClick={() => goToEpisode(ep)} title={ep.title} aria-label={`Episode ${ep.number}: ${ep.title}`} className={cn("relative flex min-h-12 items-center rounded-lg border text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary", episodeLayout === "compact" ? "justify-center text-sm font-bold" : "justify-start gap-3 px-3 text-sm", active ? "border-primary bg-primary text-primary-foreground" : "border-border/60 bg-secondary/40 text-foreground hover:border-primary/50")}>{episodeLayout === "expanded" && <span className="font-bold">{ep.number || "?"}</span>}{episodeLayout === "expanded" ? <span className="truncate">{ep.title !== `Episode ${ep.number}` ? ep.title : `Episode ${ep.number}`}</span> : ep.number || "?"}{watched && !active && <span className="absolute bottom-1 left-1/2 h-0.5 w-5 -translate-x-1/2 rounded-full bg-primary" aria-label="Watched" />}</button>
+                  return <button key={ep.id} type="button" onClick={() => goToEpisode(ep)} title={ep.title} aria-label={`Episode ${ep.number}: ${ep.title}`} aria-current={active ? "step" : undefined} className={cn("relative flex min-h-12 items-center rounded-lg border text-left transition-[background-color,border-color,color,transform] duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary active:scale-[0.98] motion-reduce:transform-none", episodeLayout === "compact" ? "justify-center text-sm font-bold" : "justify-start gap-3 px-3 text-sm", active ? "border-primary bg-primary text-primary-foreground" : "border-border/60 bg-secondary/40 text-foreground hover:border-primary/50")}>{episodeLayout === "expanded" && <span className="font-bold">{ep.number || "?"}</span>}{episodeLayout === "expanded" ? <span className="truncate">{ep.title !== `Episode ${ep.number}` ? ep.title : `Episode ${ep.number}`}</span> : ep.number || "?"}{watched && !active && <span className="absolute bottom-1 left-1/2 h-0.5 w-5 -translate-x-1/2 rounded-full bg-primary" aria-label="Watched" />}</button>
                 })}
               </div>
               {filteredEpisodes.length === 0 && <p className="p-6 text-center text-sm text-muted-foreground">No episodes match your search.</p>}

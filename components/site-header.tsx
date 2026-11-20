@@ -28,7 +28,7 @@ export function SiteHeader() {
   }
 
   return (
-    <header className="relative z-40 border-b border-border/40 bg-background/35 backdrop-blur-sm">
+    <header className="sticky top-0 z-40 border-b border-white/[0.06] bg-background/80 shadow-sm shadow-black/10 backdrop-blur-xl">
       <div className="mx-auto flex h-16 max-w-7xl items-center gap-4 px-4">
         <Link href="/" className="shrink-0" aria-label="AnimExpo home">
           <img src={LOGO_URL} alt="AnimExpo" className="h-8 w-auto object-contain sm:h-9" />
@@ -42,8 +42,8 @@ export function SiteHeader() {
                 key={href}
                 href={href}
                 className={cn(
-                  "rounded-md px-3 py-2 text-sm font-medium transition-colors",
-                  active ? "text-primary" : "text-muted-foreground hover:text-foreground",
+                  "relative rounded-md px-3 py-2 text-sm font-medium transition-colors duration-200 after:absolute after:inset-x-3 after:-bottom-[17px] after:h-0.5 after:origin-center after:rounded-full after:bg-primary after:transition-transform after:duration-200 motion-reduce:after:transition-none",
+                  active ? "text-foreground after:scale-x-100" : "text-muted-foreground after:scale-x-0 hover:text-foreground", 
                 )}
               >
                 {label}
