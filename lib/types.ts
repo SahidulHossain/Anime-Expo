@@ -15,9 +15,21 @@ export interface AnimeSummary {
   duration?: string
   malId?: string
   aniListId?: string
+  kitsuId?: string
+  titleJapanese?: string
+  titleRomaji?: string
+  alternativeTitles?: string[]
+  ageRating?: string
+  startDate?: string
+  endDate?: string
+  trailerUrl?: string
+  ratingSource?: string
+  popularityRank?: number
+  ratingRank?: number
   isSub: number
   isDub: number
   genres: string[]
+  categories?: string[]
 }
 
 export interface Episode {

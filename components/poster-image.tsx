@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useEffect, useRef, useState } from "react"
 import { cn } from "@/lib/utils"
 
 interface PosterImageProps {
@@ -12,8 +12,18 @@ interface PosterImageProps {
 }
 
 export function PosterImage({ src, alt, className, priority = false }: PosterImageProps) {
+  const imageRef = useRef<HTMLImageElement>(null)
   const [loaded, setLoaded] = useState(false)
   const [errored, setErrored] = useState(false)
+
+  useEffect(() => {
+    setLoaded(false)
+    setErrored(false)
+    const image = imageRef.current
+    if (!image?.complete) return
+    if (image.naturalWidth > 0) setLoaded(true)
+    else setErrored(true)
+  }, [src])
 
   return (
     <div className={cn("relative overflow-hidden bg-secondary", className)}>
@@ -21,6 +31,7 @@ export function PosterImage({ src, alt, className, priority = false }: PosterIma
       {src && !errored ? (
         // eslint-disable-next-line @next/next/no-img-element
         <img
+          ref={imageRef}
           src={src || "/placeholder.svg"}
           alt={alt}
           loading={priority ? "eager" : "lazy"}

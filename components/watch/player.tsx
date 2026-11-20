@@ -57,7 +57,6 @@ export function Player({ anime, episode }: { anime: AnimeDetail; episode: Episod
   const next = index >= 0 && index < anime.episodes.length - 1 ? anime.episodes[index + 1] : undefined
 
   const serverOneUrl = type === "dub" ? episode.dub : episode.sub
-
   const aniEmbedUrl = anime.aniListId
     ? `https://aniembed.se/e/${encodeURIComponent(anime.aniListId)}/${encodeURIComponent(String(episode.number))}?lang=${type}&autoplay=0`
     : undefined
@@ -118,7 +117,7 @@ export function Player({ anime, episode }: { anime: AnimeDetail; episode: Episod
   }, [anime.episodes, filter])
 
   return (
-    <main className="mx-auto max-w-7xl px-4 py-6">
+    <main className="mx-auto max-w-7xl px-4 py-4 pb-8 sm:py-5 sm:pb-10">
       <div className="mb-4 flex items-center gap-3 text-sm">
         <Link
           href={`/anime/${anime.id}`}
@@ -129,7 +128,7 @@ export function Player({ anime, episode }: { anime: AnimeDetail; episode: Episod
         </Link>
       </div>
 
-      <div className="grid gap-6 lg:grid-cols-[1fr_320px]">
+      <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_320px] lg:gap-5">
         <div className="min-w-0">
           {/* Player */}
           <div ref={containerRef} className="overflow-hidden rounded-2xl border border-white/10 bg-black shadow-2xl shadow-black/30">
@@ -158,14 +157,14 @@ export function Player({ anime, episode }: { anime: AnimeDetail; episode: Episod
           </div>
 
           {/* Title + controls */}
-          <div className="mt-4 flex flex-wrap items-start justify-between gap-4">
-            <div className="min-w-0">
-              <h1 className="text-lg font-bold tracking-tight sm:text-xl">
+          <div className="mt-3 flex flex-wrap items-center justify-between gap-2.5 sm:mt-4 sm:gap-4">
+            <div className="min-w-0 flex-1">
+              <h1 className="truncate text-base font-bold tracking-tight sm:text-xl">
                 <Link href={`/anime/${anime.id}`} className="hover:text-primary">
                   {anime.title}
                 </Link>
               </h1>
-              <p className="text-sm text-muted-foreground">
+              <p className="mt-0.5 truncate text-xs text-muted-foreground sm:text-sm">
                 Episode {episode.number} — {episode.title}
               </p>
             </div>
@@ -175,7 +174,7 @@ export function Player({ anime, episode }: { anime: AnimeDetail; episode: Episod
               onClick={() => toggle({ id: anime.id, title: anime.title, poster: anime.poster })}
               aria-pressed={saved}
               className={cn(
-                "inline-flex items-center gap-2 rounded-full border px-4 py-2 text-sm font-semibold transition-colors",
+                "inline-flex min-h-10 shrink-0 items-center gap-2 rounded-full border px-3 py-2 text-xs font-semibold transition-colors sm:px-4 sm:text-sm",
                 saved
                   ? "border-primary bg-primary/10 text-primary"
                   : "border-border bg-secondary/50 hover:bg-secondary",
@@ -187,44 +186,46 @@ export function Player({ anime, episode }: { anime: AnimeDetail; episode: Episod
           </div>
 
           {/* Toolbar: server select, fullscreen, auto-next */}
-          <div className="mt-4 flex flex-wrap items-center gap-3 rounded-lg border border-border/60 bg-card p-3">
-            <div className="grid w-full gap-2 sm:flex sm:w-auto sm:items-center">
+          <div className="mt-3 rounded-xl border border-white/10 bg-card/90 p-2.5 shadow-lg shadow-black/10 sm:mt-4 sm:p-3">
+            <div className="grid gap-2.5">
               {available.map((t) => (
-                <div key={t} className="flex items-center gap-2">
-                  <span className="w-8 text-xs font-bold uppercase text-muted-foreground">{t}</span>
-                  <div className="flex min-w-0 flex-1 overflow-hidden rounded-md border border-border">
-                    {canUseServerOne && <button type="button" onClick={() => { setType(t); setServer(1) }} aria-pressed={type === t && server === 1} className={cn("min-h-10 flex-1 px-2.5 py-2 text-xs font-bold transition-colors duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary", type === t && server === 1 ? "bg-primary text-primary-foreground" : "bg-secondary/50 text-muted-foreground hover:text-foreground")}>Server 1</button>}
-                    {canUseServerTwo && <button type="button" onClick={() => { setType(t); setServer(2) }} aria-pressed={type === t && server === 2} className={cn("min-h-10 flex-1 px-2.5 py-2 text-xs font-bold transition-colors duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary", type === t && server === 2 ? "bg-primary text-primary-foreground" : "bg-secondary/50 text-muted-foreground hover:text-foreground")}>Server 2 · FHD · 4K</button>}
-                    {canUseServerThree && <button type="button" onClick={() => { setType(t); setServer(3) }} aria-pressed={type === t && server === 3} className={cn("min-h-10 flex-1 px-2.5 py-2 text-xs font-bold transition-colors duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary", type === t && server === 3 ? "bg-primary text-primary-foreground" : "bg-secondary/50 text-muted-foreground hover:text-foreground")}>Server 3</button>}
+                <div key={t} className="grid grid-cols-[2.25rem_minmax(0,1fr)] items-center gap-2">
+                  <span className="text-[10px] font-extrabold uppercase tracking-wider text-muted-foreground sm:text-xs">{t}</span>
+                  <div className="flex min-w-0 overflow-hidden rounded-lg border border-white/10 bg-black/25">
+                    {canUseServerOne && <button type="button" onClick={() => { setType(t); setServer(1) }} aria-pressed={type === t && server === 1} className={cn("min-h-10 min-w-0 flex-1 whitespace-nowrap px-1 text-[9px] font-bold leading-tight transition-colors duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary sm:text-[11px]", type === t && server === 1 ? "bg-gradient-to-r from-red-800 to-primary text-white" : "text-muted-foreground hover:bg-white/5 hover:text-foreground")}>Server 1 · FHD</button>}
+                    {canUseServerTwo && <button type="button" onClick={() => { setType(t); setServer(2) }} aria-pressed={type === t && server === 2} className={cn("min-h-10 min-w-0 flex-1 whitespace-nowrap px-1 text-[9px] font-bold leading-tight transition-colors duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary sm:text-[11px]", type === t && server === 2 ? "bg-gradient-to-r from-red-800 to-primary text-white" : "text-muted-foreground hover:bg-white/5 hover:text-foreground")}>Server 2 · FHD / 4K</button>}
+                    {canUseServerThree && <button type="button" onClick={() => { setType(t); setServer(3) }} aria-pressed={type === t && server === 3} className={cn("min-h-10 min-w-0 flex-1 whitespace-nowrap px-1 text-[9px] font-bold leading-tight transition-colors duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary sm:text-[11px]", type === t && server === 3 ? "bg-gradient-to-r from-red-800 to-primary text-white" : "text-muted-foreground hover:bg-white/5 hover:text-foreground")}>Server 3 · AnimeEmbed</button>}
                   </div>
                 </div>
               ))}
             </div>
 
-            {downloadUrl && (
-              <a href={downloadUrl} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1.5 rounded-md border border-border bg-secondary/50 px-3 py-1.5 text-xs font-medium transition-colors hover:border-primary/60 hover:text-primary">
-                <Download className="size-4" /> Download {type.toUpperCase()}
-              </a>
-            )}
+            <div className="mt-2.5 grid grid-cols-2 gap-2 border-t border-white/10 pt-2.5 sm:flex sm:flex-wrap sm:items-center">
+              {downloadUrl && (
+                <a href={downloadUrl} target="_blank" rel="noreferrer" className="inline-flex min-h-10 items-center justify-center gap-1.5 rounded-lg border border-primary/35 bg-primary/10 px-3 text-xs font-semibold text-primary transition-colors hover:bg-primary/20">
+                  <Download className="size-4" /> Download {type.toUpperCase()}
+                </a>
+              )}
 
-            <label className="flex items-center gap-2 text-xs font-medium text-muted-foreground">
-              <input
-                type="checkbox"
-                checked={autoNext}
-                onChange={(e) => setAutoNext(e.target.checked)}
-                className="size-4 accent-[var(--primary)]"
-              />
-              Auto-play next
-            </label>
+              <label className="inline-flex min-h-10 items-center justify-center gap-2 rounded-lg border border-white/10 bg-black/20 px-3 text-xs font-medium text-muted-foreground">
+                <input
+                  type="checkbox"
+                  checked={autoNext}
+                  onChange={(e) => setAutoNext(e.target.checked)}
+                  className="size-4 accent-[var(--primary)]"
+                />
+                Auto-play Next
+              </label>
 
-            <button
-              type="button"
-              onClick={goFullscreen}
-              className="ml-auto inline-flex items-center gap-1.5 rounded-md border border-border bg-secondary/50 px-3 py-1.5 text-xs font-medium transition-colors hover:bg-secondary"
-            >
-              <Maximize className="size-4" />
-              Fullscreen
-            </button>
+              <button
+                type="button"
+                onClick={goFullscreen}
+                className="col-span-2 inline-flex min-h-10 items-center justify-center gap-1.5 rounded-lg border border-white/10 bg-secondary/50 px-3 text-xs font-medium transition-colors hover:bg-secondary sm:ml-auto sm:col-span-1"
+              >
+                <Maximize className="size-4" />
+                Fullscreen
+              </button>
+            </div>
           </div>
 
           {/* Prev / Next */}
@@ -247,7 +248,7 @@ export function Player({ anime, episode }: { anime: AnimeDetail; episode: Episod
                 onClick={() => goToEpisode(next)}
                 className="inline-flex items-center gap-1.5 rounded-full bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground transition-opacity hover:opacity-90"
               >
-                Next
+                Next Episode
                 <ChevronRight className="size-4" />
               </button>
             ) : (
