@@ -1,6 +1,7 @@
 "use client"
 
-import { useMemo, useState } from "react"
+import { useState } from "react"
+import Link from "next/link"
 import { Info } from "lucide-react"
 import type { AnimeDetail, AnimeSummary } from "@/lib/types"
 import { EpisodeList } from "./episode-list"
@@ -22,7 +23,8 @@ export function AnimeDetailsTabs({ anime, related }: { anime: AnimeDetail; relat
   const seasons = related.filter((item) => matchesFranchise(item) && !["movie", "film"].includes(item.type?.trim().toLowerCase() || ""))
   const movies = related.filter((item) => matchesFranchise(item) && ["movie", "film"].includes(item.type?.trim().toLowerCase() || ""))
   const similar = related.filter((item) => item.id !== anime.id && item.genres.some((genre) => anime.genres.includes(genre))).sort((a, b) => b.genres.filter((g) => anime.genres.includes(g)).length - a.genres.filter((g) => anime.genres.includes(g)).length || Number(b.score || 0) - Number(a.score || 0)).slice(0, 12)
-  const description = anime.description ?? "Synopsis unavailable."
+  const description = anime.description?.trim()
+  const categories = anime.categories?.filter((category) => !anime.genres.some((genre) => genre.toLowerCase() === category.toLowerCase() || (genre.toLowerCase() === "sci-fi" && category.toLowerCase() === "science fiction"))) ?? []
 
   return (
     <section className="mt-5 pb-12 sm:mt-7">
@@ -32,18 +34,20 @@ export function AnimeDetailsTabs({ anime, related }: { anime: AnimeDetail; relat
 
       <div key={active} className="details-panel pt-4 sm:pt-5">
         {active === "Home" && <div className="grid gap-5 lg:grid-cols-[1.4fr_1fr]">
-          <div>
+          {description && <div>
             <h2 className="mb-2 flex items-center gap-2 text-base font-bold sm:text-lg"><Info className="size-4 text-primary" />Synopsis</h2>
             <p className={cn("max-w-3xl text-[13px] leading-6 text-muted-foreground sm:text-sm sm:leading-7", !expanded && "line-clamp-4")}>{description}</p>
             {description.length > 320 && <button type="button" onClick={() => setExpanded(!expanded)} className="mt-2 text-sm font-semibold text-primary">{expanded ? "Less" : "More"}</button>}
-          </div>
-          <dl className="grid grid-cols-2 gap-x-5 gap-y-4 rounded-xl border border-white/[0.08] bg-white/[0.025] p-4 text-sm sm:rounded-2xl sm:p-5">
-            {anime.status && <InfoRow label="Status" value={anime.status} />}
-            {anime.type && <InfoRow label="Format" value={anime.type} />}
-            {anime.year && <InfoRow label="Release year" value={String(anime.year)} />}
-            {(anime.episodeCount || anime.episodes.length > 0) && <InfoRow label="Episodes" value={String(anime.episodeCount || anime.episodes.length)} />}
-          </dl>
-          <div className="lg:col-span-2 flex flex-wrap gap-2">{anime.genres.map((genre) => <a key={genre} href={`/browse?genre=${encodeURIComponent(genre)}`} className="rounded-full border border-white/10 px-3 py-1.5 text-xs text-muted-foreground hover:border-primary/50 hover:text-primary">{genre}</a>)}</div>
+          </div>}
+          {(anime.duration || anime.ageRating || anime.startDate || anime.endDate || anime.alternativeTitles?.length || categories.length) && <div><h2 className="mb-3 text-sm font-bold text-white sm:text-base">Information</h2><dl className="grid grid-cols-2 gap-x-5 gap-y-4 rounded-xl border border-white/[0.08] bg-white/[0.025] p-4 text-sm sm:rounded-2xl sm:p-5">
+            {anime.duration && <InfoRow label="Episode duration" value={anime.duration} />}
+            {anime.ageRating && <InfoRow label="Age rating" value={anime.ageRating} />}
+            {anime.startDate && <InfoRow label="Start date" value={anime.startDate} />}
+            {anime.endDate && <InfoRow label="End date" value={anime.endDate} />}
+            {anime.alternativeTitles?.length ? <InfoRow label="Also known as" value={anime.alternativeTitles.join(", ")} /> : null}
+            {categories.length ? <InfoRow label="Categories" value={categories.slice(0, 6).join(", ")} /> : null}
+          </dl></div>}
+          {anime.genres.length > 0 && <div className="flex flex-wrap gap-2 lg:col-span-2">{anime.genres.map((genre) => <Link key={genre} href={`/browse?genre=${encodeURIComponent(genre)}`} className="rounded-full border border-white/10 px-3 py-1.5 text-xs text-muted-foreground hover:border-primary/50 hover:text-primary">{genre}</Link>)}</div>}
         </div>}
         {active === "Episodes" && <EpisodeList anime={anime} />}
         {active === "Related" && <div className="space-y-8">

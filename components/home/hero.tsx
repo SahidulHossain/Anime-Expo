@@ -1,15 +1,24 @@
 "use client"
 
 import Link from "next/link"
+import useSWR from "swr"
 import { useEffect, useState } from "react"
 import { ChevronLeft, ChevronRight, Info, Play, Star } from "lucide-react"
 import { WatchlistButton } from "@/components/anime/watchlist-button"
 import type { AnimeSummary } from "@/lib/types"
+import type { KitsuMetadata } from "@/lib/kitsu-types"
+
+const fetchKitsu = async (url: string): Promise<{ metadata: KitsuMetadata | null }> => {
+  const response = await fetch(url)
+  if (!response.ok) return { metadata: null }
+  return response.json()
+}
 
 export function Hero({ anime, slides = [anime] }: { anime: AnimeSummary; slides?: AnimeSummary[] }) {
   const [index, setIndex] = useState(Math.max(0, slides.findIndex((item) => item.id === anime.id)))
   const [paused, setPaused] = useState(false)
   const current = slides[index] ?? anime
+  const { data: enrichment } = useSWR(!current.banner ? `/api/kitsu-metadata?id=${current.id}` : null, fetchKitsu, { revalidateOnFocus: false, shouldRetryOnError: false, dedupingInterval: 30_000 })
 
   useEffect(() => {
     if (paused || slides.length < 2 || window.matchMedia("(prefers-reduced-motion: reduce)").matches) return
@@ -21,7 +30,7 @@ export function Hero({ anime, slides = [anime] }: { anime: AnimeSummary; slides?
     <section className="relative isolate min-h-[min(660px,calc(100svh-4rem))] overflow-hidden border-b border-white/[0.06] sm:min-h-[min(700px,82svh)]" onMouseEnter={() => setPaused(true)} onMouseLeave={() => setPaused(false)}>
       <div className="absolute inset-0 -z-10 bg-black">
         {slides.map((slide, slideIndex) => (
-          <img key={slide.id} src={slide.banner || slide.poster} alt="" aria-hidden loading={slideIndex === index ? "eager" : "lazy"} fetchPriority={slideIndex === index ? "high" : "auto"} className={`absolute inset-0 h-full w-full object-cover object-[62%_center] transition-opacity duration-700 sm:object-center ${slideIndex === index ? "hero-backdrop opacity-70" : "opacity-0"}`} />
+          <img key={slide.id} src={slide.banner || (slide.id === current.id ? enrichment?.metadata?.banner : undefined) || slide.poster} alt="" aria-hidden loading={slideIndex === index ? "eager" : "lazy"} fetchPriority={slideIndex === index ? "high" : "auto"} className={`absolute inset-0 h-full w-full object-cover object-[62%_center] transition-opacity duration-700 sm:object-center ${slideIndex === index ? "hero-backdrop opacity-70" : "opacity-0"}`} />
         ))}
         <div className="absolute inset-0 bg-gradient-to-r from-black/95 via-black/70 to-black/15 sm:from-black/90 sm:via-black/55 sm:to-transparent" />
         <div className="absolute inset-0 bg-gradient-to-t from-background via-background/20 to-black/15" />
