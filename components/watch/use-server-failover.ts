@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react"
 
 type ServerId = "1" | "2" | "3"
-type Phase = "selecting" | "loading" | "ready" | "playing" | "switching" | "failed"
+type Phase = "selecting" | "loading" | "ready" | "playing" | "unverified" | "switching" | "failed"
 
 type ServerOption = { id: ServerId; url?: string }
 type Health = { failedAt?: number; succeededAt?: number; averageLoadMs?: number }
@@ -86,13 +86,20 @@ export function useServerFailover({
   const selectServer = useCallback((serverId: ServerId) => {
     autoModeRef.current = false
     setAutoMode(false)
+    attemptedRef.current.ids.delete(serverId)
     startServer(serverId)
   }, [startServer])
 
   const markReady = useCallback((expectedToken = attemptTokenRef.current) => {
     if (expectedToken !== attemptTokenRef.current) return
-    setPhase((current) => current === "loading" ? "ready" : current)
+    setPhase((current) => current === "loading" || current === "unverified" ? "ready" : current)
     setStatusMessage(`Player loaded · Server ${activeServerRef.current}`)
+  }, [])
+
+  const markUnverified = useCallback((expectedToken = attemptTokenRef.current) => {
+    if (expectedToken !== attemptTokenRef.current) return
+    setPhase((current) => current === "loading" ? "unverified" : current)
+    setStatusMessage(`Playback unverified · Server ${activeServerRef.current}`)
   }, [])
 
   const markPlaying = useCallback((expectedToken = attemptTokenRef.current) => {
@@ -180,17 +187,16 @@ export function useServerFailover({
   }, [chooseBest, episodeKey, servers, startServer, type])
 
   useEffect(() => {
-    if (phase !== "loading" && phase !== "switching") return
-    const serverId = activeServerId
+    if (phase !== "loading" && phase !== "ready") return
     const expectedToken = attemptToken
-    const timeout = window.setTimeout(() => failServer(serverId, expectedToken), STARTUP_TIMEOUT_MS)
+    const timeout = window.setTimeout(() => markUnverified(expectedToken), STARTUP_TIMEOUT_MS)
     return () => window.clearTimeout(timeout)
-  }, [activeServerId, attemptToken, failServer, phase])
+  }, [attemptToken, markUnverified, phase])
 
   const activeServer = servers.find((server) => server.id === activeServerId)
   const ready = initializedRef.current && attemptedRef.current.key === episodeKey
   return {
     ready, activeServerId, activeServer, autoMode, phase, statusMessage, attemptToken,
-    selectServer, setMode, markReady, markPlaying, failServer, switchServer, retryCurrent, retryAll,
+    selectServer, setMode, markReady, markUnverified, markPlaying, failServer, switchServer, retryCurrent, retryAll,
   }
 }
