@@ -3,19 +3,8 @@
 import { useCallback, useEffect, useRef, useState } from "react"
 
 type ServerId = "1" | "2" | "3"
-type Phase = "selecting" | "loading" | "ready" | "playing" | "unverified" | "switching" | "failed"
-
+type Phase = "idle" | "loading" | "connecting" | "playing" | "unknown" | "confirmed_error" | "switching"
 type ServerOption = { id: ServerId; url?: string }
-type Health = { failedAt?: number; succeededAt?: number; averageLoadMs?: number }
-
-const STARTUP_TIMEOUT_MS = 9_000
-const FAILURE_COOLDOWN_MS = 2 * 60_000
-const sessionPreferredServer = new Map<string, ServerId>()
-const serverHealth = new Map<string, Health>()
-
-function healthKey(animeId: number, episodeId: number, type: string, serverId: ServerId) {
-  return `${animeId}:${episodeId}:${type}:${serverId}`
-}
 
 export function useServerFailover({
   animeId,
@@ -28,179 +17,133 @@ export function useServerFailover({
   type: "sub" | "dub"
   servers: ServerOption[]
 }) {
-  const sessionKey = `${animeId}:${type}`
-  const episodeKey = `${sessionKey}:${episodeId}`
-  const [autoMode, setAutoMode] = useState(true)
-  const autoModeRef = useRef(true)
-  const [activeServerId, setActiveServerId] = useState<ServerId>(
-    () => sessionPreferredServer.get(sessionKey) ?? servers.find((server) => server.url)?.id ?? "1",
-  )
-  const activeServerRef = useRef<ServerId>(activeServerId)
-  const [phase, setPhase] = useState<Phase>("selecting")
+  const episodeKey = `${animeId}:${episodeId}:${type}`
+  const [activeServerId, setActiveServerId] = useState<ServerId>("1")
+  const activeServerRef = useRef<ServerId>("1")
+  const [phase, setPhase] = useState<Phase>("idle")
   const [statusMessage, setStatusMessage] = useState("")
   const [attemptToken, setAttemptToken] = useState(0)
   const attemptTokenRef = useRef(0)
-  const attemptStartedAtRef = useRef(0)
   const attemptedRef = useRef<{ key: string; ids: Set<ServerId> }>({ key: episodeKey, ids: new Set() })
+  const confirmedErrorsRef = useRef<{ key: string; ids: Set<ServerId> }>({ key: episodeKey, ids: new Set() })
   const initializedRef = useRef(false)
 
-  const chooseBest = useCallback((excluded: Set<ServerId>) => {
-    const eligible = servers.filter((server) => server.url && !excluded.has(server.id))
-    eligible.sort((a, b) => {
-      const healthA = serverHealth.get(healthKey(animeId, episodeId, type, a.id))
-      const healthB = serverHealth.get(healthKey(animeId, episodeId, type, b.id))
-      const recentlyFailedA = healthA?.failedAt && Date.now() - healthA.failedAt < FAILURE_COOLDOWN_MS ? 1 : 0
-      const recentlyFailedB = healthB?.failedAt && Date.now() - healthB.failedAt < FAILURE_COOLDOWN_MS ? 1 : 0
-      return recentlyFailedA - recentlyFailedB || Number(a.id) - Number(b.id)
-    })
-    return eligible[0]
-  }, [animeId, episodeId, sessionKey, servers, type])
-
-  const startServer = useCallback((serverId: ServerId) => {
-    activeServerRef.current = serverId
-    setActiveServerId(serverId)
-    attemptStartedAtRef.current = Date.now()
-    attemptTokenRef.current += 1
-    setAttemptToken(attemptTokenRef.current)
-    setPhase("loading")
-    setStatusMessage(`Loading Server ${serverId}…`)
+  const updatePhase = useCallback((next: Phase) => {
+    setPhase(next)
   }, [])
 
-  const setMode = useCallback((enabled: boolean) => {
-    autoModeRef.current = enabled
-    setAutoMode(enabled)
-    if (!enabled) return
-    attemptedRef.current = { key: episodeKey, ids: new Set() }
-    const best = chooseBest(new Set())
-    if (best) startServer(best.id)
-    else {
-      setPhase("failed")
-      setStatusMessage(`No configured server has a ${type.toUpperCase()} stream for this episode.`)
-    }
-  }, [chooseBest, episodeKey, startServer, type])
+  const startServer = useCallback((serverId: ServerId, switching = false) => {
+    activeServerRef.current = serverId
+    setActiveServerId(serverId)
+    attemptTokenRef.current += 1
+    setAttemptToken(attemptTokenRef.current)
+    updatePhase(switching ? "switching" : "loading")
+    setStatusMessage(`${switching ? "Switching to" : "Loading"} Server ${serverId}…`)
+  }, [updatePhase])
+
+  const chooseNext = useCallback((excluded: Set<ServerId>) =>
+    servers.find((server) => server.url && !excluded.has(server.id),
+  ), [servers])
 
   const selectServer = useCallback((serverId: ServerId) => {
-    autoModeRef.current = false
-    setAutoMode(false)
-    attemptedRef.current.ids.delete(serverId)
-    if (!servers.find((server) => server.id === serverId)?.url) {
+    attemptedRef.current = { key: episodeKey, ids: new Set() }
+    confirmedErrorsRef.current = { key: episodeKey, ids: new Set() }
+    const selected = servers.find((server) => server.id === serverId && server.url)
+    if (!selected) {
       activeServerRef.current = serverId
       setActiveServerId(serverId)
-      setPhase("failed")
-      setStatusMessage(`Server ${serverId} couldn’t play this episode.`)
+      setStatusMessage("This server has no stream for the selected episode.")
+      updatePhase("confirmed_error")
       return
     }
     startServer(serverId)
-  }, [servers, startServer])
+  }, [episodeKey, servers, startServer, updatePhase])
 
   const markReady = useCallback((expectedToken = attemptTokenRef.current) => {
     if (expectedToken !== attemptTokenRef.current) return
-    setPhase((current) => current === "loading" || current === "unverified" ? "ready" : current)
-    setStatusMessage(`Connecting to Server ${activeServerRef.current}…`)
-  }, [])
+    updatePhase("unknown")
+    setStatusMessage(`Server ${activeServerRef.current} connected; playback status is unavailable.`)
+  }, [updatePhase])
 
-  const markUnverified = useCallback((expectedToken = attemptTokenRef.current) => {
-    if (expectedToken !== attemptTokenRef.current) return
-    setPhase((current) => current === "loading" ? "unverified" : current)
-    setStatusMessage(`Playback unverified · Server ${activeServerRef.current}`)
-  }, [])
+  const markUnverified = markReady
 
   const markPlaying = useCallback((expectedToken = attemptTokenRef.current) => {
     if (expectedToken !== attemptTokenRef.current) return
-    const serverId = activeServerRef.current
-    const key = healthKey(animeId, episodeId, type, serverId)
-    const previous = serverHealth.get(key)
-    const loadTime = Math.max(0, Date.now() - attemptStartedAtRef.current)
-    sessionPreferredServer.set(sessionKey, serverId)
-    serverHealth.set(key, {
-      succeededAt: Date.now(),
-      averageLoadMs: previous?.averageLoadMs ? Math.round(previous.averageLoadMs * 0.7 + loadTime * 0.3) : loadTime,
-    })
-    setPhase("playing")
-    setStatusMessage(`Playback started · Server ${serverId}`)
-  }, [animeId, episodeId, sessionKey, type])
+    attemptedRef.current = { key: episodeKey, ids: new Set() }
+    confirmedErrorsRef.current = { key: episodeKey, ids: new Set() }
+    updatePhase("playing")
+    setStatusMessage(`Playback started · Server ${activeServerRef.current}`)
+  }, [episodeKey, updatePhase])
 
   const failServer = useCallback((serverId = activeServerRef.current, expectedToken = attemptTokenRef.current) => {
     if (expectedToken !== attemptTokenRef.current || attemptedRef.current.key !== episodeKey || attemptedRef.current.ids.has(serverId)) return
     attemptedRef.current.ids.add(serverId)
-    const key = healthKey(animeId, episodeId, type, serverId)
-    serverHealth.set(key, { ...serverHealth.get(key), failedAt: Date.now() })
-
-    if (!autoModeRef.current) {
-      setPhase("failed")
-      setStatusMessage(`Server ${serverId} couldn’t play this episode.`)
+    if (confirmedErrorsRef.current.key !== episodeKey) {
+      confirmedErrorsRef.current = { key: episodeKey, ids: new Set() }
+    }
+    confirmedErrorsRef.current.ids.add(serverId)
+    const next = chooseNext(attemptedRef.current.ids)
+    if (next) {
+      updatePhase("switching")
+      startServer(next.id, true)
       return
     }
-
-    const next = chooseBest(attemptedRef.current.ids)
-    if (!next) {
-      setPhase("failed")
+    const availableServers = servers.filter((server) => server.url)
+    if (availableServers.length > 0 && availableServers.every((server) => confirmedErrorsRef.current.ids.has(server.id))) {
+      updatePhase("confirmed_error")
       setStatusMessage("We couldn’t play this episode using the available servers.")
       return
     }
-    startServer(next.id)
-    setStatusMessage(`Server ${serverId} unavailable. Trying Server ${next.id}…`)
-  }, [animeId, chooseBest, episodeId, episodeKey, startServer, type])
+    updatePhase("unknown")
+    setStatusMessage("No other server is available to try. Switch servers manually if playback is not working.")
+  }, [chooseNext, episodeKey, servers, startServer, updatePhase])
 
   const switchServer = useCallback(() => {
     const current = activeServerRef.current
-    attemptedRef.current.ids.add(current)
-    const next = chooseBest(attemptedRef.current.ids)
+    const excluded = new Set(attemptedRef.current.key === episodeKey ? attemptedRef.current.ids : [])
+    excluded.add(current)
+    const next = chooseNext(excluded)
     if (next) {
-      autoModeRef.current = false
-      setAutoMode(false)
-      startServer(next.id)
-    } else {
-      setPhase("failed")
-      setStatusMessage("No other configured server is available for this episode.")
+      attemptedRef.current = { key: episodeKey, ids: excluded }
+      startServer(next.id, true)
     }
-  }, [chooseBest, startServer])
+  }, [chooseNext, episodeKey, startServer])
 
   const retryCurrent = useCallback(() => {
-    attemptedRef.current.ids.delete(activeServerRef.current)
+    attemptedRef.current = { key: episodeKey, ids: new Set() }
+    confirmedErrorsRef.current = { key: episodeKey, ids: new Set() }
     startServer(activeServerRef.current)
-  }, [startServer])
+  }, [episodeKey, startServer])
 
   const retryAll = useCallback(() => {
     attemptedRef.current = { key: episodeKey, ids: new Set() }
-    autoModeRef.current = true
-    setAutoMode(true)
-    const best = chooseBest(new Set())
-    if (best) startServer(best.id)
+    confirmedErrorsRef.current = { key: episodeKey, ids: new Set() }
+    const first = chooseNext(new Set())
+    if (first) startServer(first.id)
     else {
-      setPhase("failed")
       setStatusMessage("No configured server is available for this language.")
+      updatePhase("confirmed_error")
     }
-  }, [chooseBest, episodeKey, startServer])
+  }, [chooseNext, episodeKey, startServer, updatePhase])
 
   useEffect(() => {
     if (initializedRef.current && attemptedRef.current.key === episodeKey) return
     initializedRef.current = true
     attemptedRef.current = { key: episodeKey, ids: new Set() }
+    confirmedErrorsRef.current = { key: episodeKey, ids: new Set() }
     setStatusMessage("")
-    const selected = autoModeRef.current
-      ? chooseBest(new Set())
-      : servers.find((server) => server.id === activeServerRef.current && server.url)
-    if (selected) startServer(selected.id)
+    const first = servers.find((server) => server.id === "1" && server.url) ?? chooseNext(new Set())
+    if (first) startServer(first.id)
     else {
-      setPhase("failed")
       setStatusMessage(`No server has a ${type.toUpperCase()} stream for this episode.`)
+      updatePhase("confirmed_error")
     }
-  }, [chooseBest, episodeKey, servers, startServer, type])
-
-  useEffect(() => {
-    if (phase !== "loading" && phase !== "ready") return
-    const expectedToken = attemptToken
-    const expectedServer = activeServerId
-    const remaining = Math.max(0, STARTUP_TIMEOUT_MS - (Date.now() - attemptStartedAtRef.current))
-    const timeout = window.setTimeout(() => failServer(expectedServer, expectedToken), remaining)
-    return () => window.clearTimeout(timeout)
-  }, [activeServerId, attemptToken, failServer, phase])
+  }, [chooseNext, episodeKey, servers, startServer, type, updatePhase])
 
   const activeServer = servers.find((server) => server.id === activeServerId)
   const ready = initializedRef.current && attemptedRef.current.key === episodeKey
   return {
-    ready, activeServerId, activeServer, autoMode, phase, statusMessage, attemptToken,
-    selectServer, setMode, markReady, markUnverified, markPlaying, failServer, switchServer, retryCurrent, retryAll,
+    ready, activeServerId, activeServer, phase, statusMessage, attemptToken,
+    selectServer, markReady, markUnverified, markPlaying, failServer, switchServer, retryCurrent, retryAll,
   }
 }

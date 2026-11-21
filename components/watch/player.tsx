@@ -101,7 +101,7 @@ export function Player({ anime, episode }: { anime: AnimeDetail; episode: Episod
           playbackPositionRef.current = video.currentTime
           if (!video.paused && !video.ended && video.currentTime > 0) failover.markPlaying(token)
         }
-        const onError = () => failover.failServer(failover.activeServerId, failover.attemptToken)
+        const onError = () => failover.failServer(failover.activeServerId, token)
         const resume = () => {
           if (frame !== iframeRef.current || playbackPositionRef.current <= 0) return
           video.currentTime = playbackPositionRef.current
@@ -206,7 +206,7 @@ export function Player({ anime, episode }: { anime: AnimeDetail; episode: Episod
           {/* Player */}
           <div ref={containerRef} className="overflow-hidden rounded-xl bg-black shadow-xl shadow-black/25 [&:fullscreen]:flex [&:fullscreen]:items-center [&:fullscreen]:justify-center [&:fullscreen>div]:aspect-auto [&:fullscreen>div]:h-full [&:fullscreen>div]:w-full">
             <div className="relative aspect-video w-full">
-              {streamUrl && failover.phase !== "failed" && failover.phase !== "selecting" ? (
+              {streamUrl && failover.phase !== "confirmed_error" && failover.phase !== "idle" ? (
                 <>
                   <iframe
                     ref={iframeRef}
@@ -226,7 +226,7 @@ export function Player({ anime, episode }: { anime: AnimeDetail; episode: Episod
                     </div>
                   )}
                 </>
-              ) : failover.phase === "failed" ? (
+              ) : failover.phase === "confirmed_error" ? (
                 <div role="alert" className="absolute inset-0 flex flex-col items-center justify-center gap-2 px-5 text-center">
                   <CircleAlert className="size-7 text-primary" />
                   <p className="text-sm font-semibold text-white">{failover.statusMessage}</p>
@@ -288,7 +288,7 @@ export function Player({ anime, episode }: { anime: AnimeDetail; episode: Episod
           <div className="mt-3 rounded-xl border border-white/10 bg-card/90 p-2 sm:mt-3 sm:p-2.5">
             <div className="grid gap-3">
               <div className="flex flex-wrap items-center justify-between gap-2">
-                {failover.phase !== "failed" && <p className="flex min-h-8 items-center gap-2 text-xs font-semibold text-foreground" role="status" aria-live="polite">
+                {failover.phase !== "confirmed_error" && <p className="flex min-h-8 items-center gap-2 text-xs font-semibold text-foreground" role="status" aria-live="polite">
                   {!failover.ready || failover.phase === "loading" || failover.phase === "switching" ? (
                     <LoaderCircle className="size-3.5 animate-spin text-primary" aria-hidden="true" />
                   ) : failover.phase === "playing" ? (
@@ -299,14 +299,14 @@ export function Player({ anime, episode }: { anime: AnimeDetail; episode: Episod
                       ? "Loading player…"
                       : failover.phase === "playing"
                         ? `Playback started · Server ${failover.activeServerId}`
-                        : failover.phase === "unverified"
+                        : failover.phase === "unknown"
                           ? `Playback not verified · Server ${failover.activeServerId}`
-                          : failover.phase === "ready"
+                          : failover.phase === "connecting"
                             ? `Connecting to Server ${failover.activeServerId}…`
                             : failover.statusMessage || `Loading Server ${failover.activeServerId}…`}
                   </span>
                 </p>}
-                {failover.ready && (failover.phase === "ready" || failover.phase === "unverified") && (
+                {failover.ready && (failover.phase === "connecting" || failover.phase === "unknown") && (
                   <button type="button" onClick={failover.switchServer} className="min-h-9 rounded-lg border border-border px-3 text-xs font-semibold text-muted-foreground hover:text-foreground">Video not playing? Switch server</button>
                 )}
               </div>
@@ -327,13 +327,14 @@ export function Player({ anime, episode }: { anime: AnimeDetail; episode: Episod
                     <button
                       key={serverOption.id}
                       type="button"
+                      disabled={!serverOption.url}
                       onClick={() => failover.selectServer(serverOption.id)}
                       aria-pressed={failover.activeServerId === serverOption.id}
                       aria-label={`Server ${serverOption.id}${serverOption.id === "1" ? " · FHD" : serverOption.id === "2" ? " · FHD / 4K" : ""}`}
                       className={cn("min-h-11 min-w-0 rounded-lg border px-2 py-1 text-[10px] font-semibold leading-tight transition-colors", failover.activeServerId === serverOption.id ? "border-primary bg-primary/15 text-primary" : "border-white/10 bg-black/20 text-muted-foreground hover:text-foreground")}
                     >
-                      <span className="block">Server {serverOption.id}</span>
-                      {serverOption.id !== "3" && <span className="mt-0.5 block text-[9px] font-medium opacity-75">{serverOption.id === "1" ? "FHD" : "FHD / 4K"}</span>}
+                      <span className="block">Server {serverOption.id}{serverOption.id !== "3" ? " ·" : ""}</span>
+                      {serverOption.id !== "3" && <span className="mt-0.5 block whitespace-nowrap text-[9px] font-medium opacity-75">{serverOption.id === "1" ? "FHD" : "FHD / 4K"}</span>}
                     </button>
                   ))}
                 </div>
