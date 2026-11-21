@@ -2,7 +2,7 @@
 
 import Link from "next/link"
 import { useRouter, useSearchParams } from "next/navigation"
-import { useCallback, useEffect, useMemo, useRef, useState } from "react"
+import { useCallback, useEffect, useMemo, useRef, useState, type SyntheticEvent } from "react"
 import {
   ArrowLeft,
   ChevronLeft,
@@ -13,10 +13,14 @@ import {
   Search,
   Download,
   RefreshCw,
+  Check,
+  CircleAlert,
+  LoaderCircle,
 } from "lucide-react"
 import type { AnimeDetail, Episode } from "@/lib/types"
 import { recordHistory, useHistory, useWatchlist } from "@/lib/local-store"
 import { cn } from "@/lib/utils"
+import { useServerFailover } from "@/components/watch/use-server-failover"
 
 type StreamType = "sub" | "dub"
 
@@ -27,20 +31,17 @@ export function Player({ anime, episode }: { anime: AnimeDetail; episode: Episod
   const { isSaved, toggle, hydrated } = useWatchlist()
   const { history } = useHistory()
 
-  const available: StreamType[] = useMemo(() => {
-    const list: StreamType[] = []
-    if (episode.sub) list.push("sub")
-    if (episode.dub) list.push("dub")
-    return list.length ? list : ["sub"]
-  }, [episode, anime])
-
-  const requested = (params.get("type") as StreamType) || available[0]
-  const [type, setType] = useState<StreamType>(available.includes(requested) ? requested : available[0])
-  const [server, setServer] = useState<1 | 2 | 3>(1)
-  const [loadError, setLoadError] = useState(false)
+  const requested = params.get("type")
+  const [type, setType] = useState<StreamType>(() =>
+    requested === "dub" ? "dub" : requested === "sub" ? "sub" : episode.sub ? "sub" : "dub",
+  )
   const [autoNext, setAutoNext] = useState(false)
   const [filter, setFilter] = useState("")
+  const [episodeLimit, setEpisodeLimit] = useState(120)
   const [episodeLayout, setEpisodeLayout] = useState<"compact" | "expanded">("compact")
+  const iframeRef = useRef<HTMLIFrameElement>(null)
+  const videoCleanupRef = useRef<(() => void) | null>(null)
+  const playbackPositionRef = useRef(0)
 
   useEffect(() => {
     const saved = window.localStorage.getItem("animexpo-episode-layout")
@@ -58,22 +59,76 @@ export function Player({ anime, episode }: { anime: AnimeDetail; episode: Episod
 
   const serverOneUrl = type === "dub" ? episode.dub : episode.sub
   const aniEmbedUrl = anime.aniListId
-    ? `https://aniembed.se/e/${encodeURIComponent(anime.aniListId)}/${encodeURIComponent(String(episode.number))}?lang=${type}&autoplay=0`
+    ? `https://aniembed.se/e/${encodeURIComponent(anime.aniListId)}/${encodeURIComponent(String(episode.number))}?lang=${type}&autoplay=1`
     : undefined
   const anixoEmbedUrl = anime.aniListId && episode.episodeNumber
     ? `https://anixo.buzz/embed/ani/${encodeURIComponent(anime.aniListId)}/${encodeURIComponent(String(episode.episodeNumber))}?player=custom&track=${type}`
     : undefined
-  const streamUrl = server === 2 ? aniEmbedUrl : server === 3 ? anixoEmbedUrl : serverOneUrl
+  const servers = useMemo(
+    () => [
+      { id: "1" as const, url: serverOneUrl },
+      { id: "2" as const, url: aniEmbedUrl },
+      { id: "3" as const, url: anixoEmbedUrl },
+    ],
+    [serverOneUrl, aniEmbedUrl, anixoEmbedUrl],
+  )
+  const failover = useServerFailover({ animeId: anime.id, episodeId: episode.id, type, servers })
+  const streamUrl = failover.ready ? failover.activeServer?.url : undefined
   const downloadUrl = anime.malId
     ? `https://zokoanime.video/download/mal/${encodeURIComponent(anime.malId)}/${encodeURIComponent(String(episode.number))}/${type}`
     : undefined
-  const canUseServerOne = Boolean(serverOneUrl)
-  const canUseServerTwo = Boolean(anime.aniListId)
-  const canUseServerThree = Boolean(anime.aniListId && episode.episodeNumber)
+  const hasSub = Boolean(episode.sub || anime.aniListId)
+  const hasDub = Boolean(episode.dub || anime.aniListId)
 
+  const handleIframeLoad = useCallback(
+    (event: SyntheticEvent<HTMLIFrameElement>) => {
+      const frame = event.currentTarget
+      if (frame !== iframeRef.current) return
+      const token = failover.attemptToken
+      failover.markReady(token)
+      videoCleanupRef.current?.()
+      videoCleanupRef.current = null
+      try {
+        const video = frame.contentDocument?.querySelector("video")
+        if (!video) return
+        const onPlaying = () => {
+          if (frame !== iframeRef.current) return
+          if (video.currentTime > 0) playbackPositionRef.current = video.currentTime
+          failover.markPlaying(token)
+        }
+        const onTimeUpdate = () => {
+          if (frame !== iframeRef.current) return
+          playbackPositionRef.current = video.currentTime
+          if (!video.paused && !video.ended && video.currentTime > 0) failover.markPlaying(token)
+        }
+        const onError = () => failover.failServer(failover.activeServerId, token)
+        const resume = () => {
+          if (frame !== iframeRef.current || playbackPositionRef.current <= 0) return
+          video.currentTime = playbackPositionRef.current
+          void video.play().catch(() => undefined)
+        }
+        video.addEventListener("playing", onPlaying)
+        video.addEventListener("timeupdate", onTimeUpdate)
+        video.addEventListener("loadedmetadata", resume)
+        video.addEventListener("error", onError)
+        videoCleanupRef.current = () => {
+          video.removeEventListener("playing", onPlaying)
+          video.removeEventListener("timeupdate", onTimeUpdate)
+          video.removeEventListener("loadedmetadata", resume)
+          video.removeEventListener("error", onError)
+        }
+        if (!video.paused && video.currentTime > 0) onPlaying()
+      } catch {
+        // Cross-origin embeds cannot be inspected; the UI stays in verification mode.
+      }
+    },
+    [failover.activeServerId, failover.attemptToken, failover.failServer, failover.markPlaying, failover.markReady],
+  )
+
+  useEffect(() => () => videoCleanupRef.current?.(), [failover.attemptToken, streamUrl])
   useEffect(() => {
-    setLoadError(false)
-  }, [streamUrl])
+    playbackPositionRef.current = 0
+  }, [episode.id])
 
   // Record watch history (episode-level resume) whenever the episode/type changes.
   useEffect(() => {
@@ -94,6 +149,14 @@ export function Player({ anime, episode }: { anime: AnimeDetail; episode: Episod
       router.push(`/watch/${anime.id}/${ep.id}?type=${type}`)
     },
     [anime.id, router, type],
+  )
+
+  const changeType = useCallback(
+    (nextType: StreamType) => {
+      setType(nextType)
+      router.replace(`/watch/${anime.id}/${episode.id}?type=${nextType}`, { scroll: false })
+    },
+    [anime.id, episode.id, router],
   )
 
   const goFullscreen = useCallback(async () => {
@@ -124,6 +187,7 @@ export function Player({ anime, episode }: { anime: AnimeDetail; episode: Episod
       (ep) => String(ep.number).includes(q) || ep.title.toLowerCase().includes(q.toLowerCase()),
     )
   }, [anime.episodes, filter])
+  const visibleEpisodes = filteredEpisodes.slice(0, episodeLimit)
 
   return (
     <main className="mx-auto max-w-7xl px-4 py-4 pb-8 sm:py-5 sm:pb-10">
@@ -140,26 +204,44 @@ export function Player({ anime, episode }: { anime: AnimeDetail; episode: Episod
       <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_320px] lg:gap-5">
         <div className="min-w-0">
           {/* Player */}
-          <div ref={containerRef} className="overflow-hidden rounded-2xl border border-white/10 bg-black shadow-2xl shadow-black/30">
+          <div ref={containerRef} className="overflow-hidden rounded-xl bg-black shadow-xl shadow-black/25 [&:fullscreen]:flex [&:fullscreen]:items-center [&:fullscreen]:justify-center [&:fullscreen>div]:aspect-auto [&:fullscreen>div]:h-full [&:fullscreen>div]:w-full">
             <div className="relative aspect-video w-full">
-              {streamUrl && !loadError ? (
-                <iframe
-                  key={`${episode.id}-${type}-${server}`}
-                  src={streamUrl}
-                  title={`${anime.title} Episode ${episode.number}`}
-                  allow="autoplay; encrypted-media; picture-in-picture; fullscreen" referrerPolicy="no-referrer"
-                  allowFullScreen
-                  onError={() => setLoadError(true)}
-                  className="absolute inset-0 h-full w-full border-0"
-                />
+              {streamUrl && failover.phase !== "confirmed_error" && failover.phase !== "idle" ? (
+                <>
+                  <iframe
+                    ref={iframeRef}
+                    key={`${episode.id}-${type}-${failover.activeServerId}-${failover.attemptToken}`}
+                    src={streamUrl}
+                    title={`${anime.title} Episode ${episode.number}`}
+                    allow="autoplay; encrypted-media; picture-in-picture; fullscreen"
+                    referrerPolicy="no-referrer"
+                    allowFullScreen
+                    onLoad={handleIframeLoad}
+                    onError={() => failover.failServer(failover.activeServerId, failover.attemptToken)}
+                    className="absolute inset-0 h-full w-full border-0"
+                  />
+                  {(failover.phase === "loading" || failover.phase === "switching") && (
+                    <div className="pointer-events-none absolute inset-0 flex items-center justify-center bg-black/70" aria-hidden="true">
+                      <LoaderCircle className="size-5 animate-spin text-primary" />
+                    </div>
+                  )}
+                </>
+              ) : failover.phase === "confirmed_error" ? (
+                <div role="alert" className="absolute inset-0 flex flex-col items-center justify-center gap-2 px-5 text-center">
+                  <CircleAlert className="size-7 text-primary" />
+                  <p className="text-sm font-semibold text-white">{failover.statusMessage}</p>
+                  <p className="max-w-md text-xs text-white/65">Try another server or retry playback. Your episode and language selection will be kept.</p>
+                  <div className="mt-1 flex flex-wrap justify-center gap-2">
+                    <button type="button" onClick={failover.retryAll} className="inline-flex min-h-9 items-center gap-1.5 rounded-lg bg-primary px-3 text-xs font-semibold text-primary-foreground">
+                      <RefreshCw className="size-3.5" /> Retry All Servers
+                    </button>
+                    <button type="button" onClick={failover.retryCurrent} className="min-h-9 rounded-lg border border-white/15 px-3 text-xs font-semibold text-white">Retry Current Server</button>
+                  </div>
+                </div>
               ) : (
                 <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 px-6 text-center text-sm text-muted-foreground">
-                  <p>{loadError ? "This stream could not be loaded." : "This episode is not available to stream."}</p>
-                  {loadError && (
-                    <button type="button" onClick={() => setLoadError(false)} className="inline-flex items-center gap-2 rounded-md bg-primary px-3 py-2 text-xs font-semibold text-primary-foreground">
-                      <RefreshCw className="size-3.5" /> Retry
-                    </button>
-                  )}
+                  <LoaderCircle className="size-6 animate-spin text-primary" aria-hidden="true" />
+                  <p>{failover.statusMessage || `Loading Server ${failover.activeServerId}…`}</p>
                 </div>
               )}
             </div>
@@ -175,6 +257,7 @@ export function Player({ anime, episode }: { anime: AnimeDetail; episode: Episod
               </h1>
               <p className="mt-0.5 truncate text-xs text-muted-foreground sm:text-sm">
                 Episode {episode.number} — {episode.title}
+                {anime.score && <span className="ml-2 text-foreground/80">★ {anime.score}</span>}
               </p>
             </div>
 
@@ -194,19 +277,68 @@ export function Player({ anime, episode }: { anime: AnimeDetail; episode: Episod
             </button>
           </div>
 
+          {anime.description && (
+            <details className="mt-2 text-xs text-muted-foreground">
+              <summary className="w-fit cursor-pointer font-medium text-foreground/80">Synopsis</summary>
+              <p className="mt-1.5 max-w-3xl leading-relaxed">{anime.description}</p>
+            </details>
+          )}
+
           {/* Toolbar: server select, fullscreen, auto-next */}
-          <div className="mt-3 rounded-xl border border-white/10 bg-card/90 p-2.5 shadow-lg shadow-black/10 sm:mt-4 sm:p-3">
-            <div className="grid gap-2.5">
-              {available.map((t) => (
-                <div key={t} className="grid grid-cols-[2.25rem_minmax(0,1fr)] items-center gap-2">
-                  <span className="text-[10px] font-extrabold uppercase tracking-wider text-muted-foreground sm:text-xs">{t}</span>
-                  <div className="flex min-w-0 overflow-hidden rounded-lg border border-white/10 bg-black/25">
-                    {canUseServerOne && <button type="button" onClick={() => { setType(t); setServer(1) }} aria-pressed={type === t && server === 1} className={cn("min-h-10 min-w-0 flex-1 whitespace-nowrap px-1 text-[9px] font-bold leading-tight transition-colors duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary sm:text-[11px]", type === t && server === 1 ? "bg-gradient-to-r from-red-800 to-primary text-white" : "text-muted-foreground hover:bg-white/5 hover:text-foreground")}>Server 1 · FHD</button>}
-                    {canUseServerTwo && <button type="button" onClick={() => { setType(t); setServer(2) }} aria-pressed={type === t && server === 2} className={cn("min-h-10 min-w-0 flex-1 whitespace-nowrap px-1 text-[9px] font-bold leading-tight transition-colors duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary sm:text-[11px]", type === t && server === 2 ? "bg-gradient-to-r from-red-800 to-primary text-white" : "text-muted-foreground hover:bg-white/5 hover:text-foreground")}>Server 2 · FHD / 4K</button>}
-                    {canUseServerThree && <button type="button" onClick={() => { setType(t); setServer(3) }} aria-pressed={type === t && server === 3} className={cn("min-h-10 min-w-0 flex-1 whitespace-nowrap px-1 text-[9px] font-bold leading-tight transition-colors duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary sm:text-[11px]", type === t && server === 3 ? "bg-gradient-to-r from-red-800 to-primary text-white" : "text-muted-foreground hover:bg-white/5 hover:text-foreground")}>Server 3</button>}
-                  </div>
+          <div className="mt-3 rounded-xl border border-white/10 bg-card/90 p-2 sm:mt-3 sm:p-2.5">
+            <div className="grid gap-3">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                {failover.phase !== "confirmed_error" && <p className="flex min-h-8 items-center gap-2 text-xs font-semibold text-foreground" role="status" aria-live="polite">
+                  {!failover.ready || failover.phase === "loading" || failover.phase === "switching" ? (
+                    <LoaderCircle className="size-3.5 animate-spin text-primary" aria-hidden="true" />
+                  ) : failover.phase === "playing" ? (
+                    <Check className="size-3.5 text-emerald-400" aria-hidden="true" />
+                  ) : null}
+                  <span>
+                      {!failover.ready
+                      ? "Loading player…"
+                      : failover.phase === "playing"
+                        ? `Playback started · Server ${failover.activeServerId}`
+                        : failover.phase === "unknown"
+                          ? `Playback not verified · Server ${failover.activeServerId}`
+                          : failover.phase === "connecting"
+                            ? `Connecting to Server ${failover.activeServerId}…`
+                            : failover.statusMessage || `Loading Server ${failover.activeServerId}…`}
+                  </span>
+                </p>}
+                {failover.ready && (failover.phase === "connecting" || failover.phase === "unknown") && (
+                  <button type="button" onClick={failover.switchServer} className="min-h-9 rounded-lg border border-border px-3 text-xs font-semibold text-muted-foreground hover:text-foreground">Video not playing? Switch server</button>
+                )}
+              </div>
+
+              <div className="grid gap-2.5 sm:grid-cols-[auto_minmax(0,1fr)] sm:items-center">
+                <div className="flex gap-1.5" role="group" aria-label="Audio language">
+                  {(["sub", "dub"] as const).map((language) => {
+                    const supported = language === "sub" ? hasSub : hasDub
+                    return (
+                      <button key={language} type="button" disabled={!supported} onClick={() => changeType(language)} aria-pressed={type === language} className={cn("min-h-9 min-w-12 rounded-lg border px-2.5 text-[11px] font-bold uppercase transition-colors disabled:cursor-not-allowed disabled:opacity-40", type === language ? "border-primary bg-primary/15 text-primary" : "border-white/10 bg-black/20 text-muted-foreground hover:text-foreground")}>
+                        {language}
+                      </button>
+                    )
+                  })}
                 </div>
-              ))}
+                <div className="grid grid-cols-1 gap-2 min-[380px]:grid-cols-3 sm:gap-1.5" role="group" aria-label={`Server selection for ${type.toUpperCase()}`}>
+                  {servers.map((serverOption) => (
+                    <button
+                      key={serverOption.id}
+                      type="button"
+                      disabled={!serverOption.url}
+                      onClick={() => failover.selectServer(serverOption.id)}
+                      aria-pressed={failover.activeServerId === serverOption.id}
+                      aria-label={`Server ${serverOption.id}${serverOption.id === "1" ? " · FHD" : serverOption.id === "2" ? " · FHD / 4K" : ""}`}
+                      className={cn("min-h-11 min-w-0 rounded-lg border px-2 py-1 text-[10px] font-semibold leading-tight transition-colors", failover.activeServerId === serverOption.id ? "border-primary bg-primary/15 text-primary" : "border-white/10 bg-black/20 text-muted-foreground hover:text-foreground")}
+                    >
+                      <span className="block">Server {serverOption.id}{serverOption.id !== "3" ? " ·" : ""}</span>
+                      {serverOption.id !== "3" && <span className="mt-0.5 block whitespace-nowrap text-[9px] font-medium opacity-75">{serverOption.id === "1" ? "FHD" : "FHD / 4K"}</span>}
+                    </button>
+                  ))}
+                </div>
+              </div>
             </div>
 
             <div className="mt-2.5 grid grid-cols-2 gap-2 border-t border-white/10 pt-2.5 sm:flex sm:flex-wrap sm:items-center">
@@ -293,13 +425,18 @@ export function Player({ anime, episode }: { anime: AnimeDetail; episode: Episod
             </div>
             <div className="max-h-[420px] overflow-y-auto p-2 lg:max-h-[calc(100dvh-16rem)] [scrollbar-width:thin]">
               <div className={cn("grid gap-2", episodeLayout === "compact" ? "grid-cols-4 min-[380px]:grid-cols-5 lg:grid-cols-4" : "grid-cols-1 sm:grid-cols-2 lg:grid-cols-1")}>
-                {filteredEpisodes.map((ep) => {
+                {visibleEpisodes.map((ep) => {
                   const active = ep.id === episode.id
                   const watched = history.some((item) => item.animeId === anime.id && item.episodeId === ep.id)
                   return <button key={ep.id} type="button" onClick={() => goToEpisode(ep)} title={ep.title} aria-label={`Episode ${ep.number}: ${ep.title}`} aria-current={active ? "step" : undefined} className={cn("relative flex min-h-12 items-center rounded-lg border text-left transition-[background-color,border-color,color,transform] duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary active:scale-[0.98] motion-reduce:transform-none", episodeLayout === "compact" ? "justify-center text-sm font-bold" : "justify-start gap-3 px-3 text-sm", active ? "border-primary bg-primary text-primary-foreground" : "border-border/60 bg-secondary/40 text-foreground hover:border-primary/50")}>{episodeLayout === "expanded" && <span className="font-bold">{ep.number || "?"}</span>}{episodeLayout === "expanded" ? <span className="truncate">{ep.title !== `Episode ${ep.number}` ? ep.title : `Episode ${ep.number}`}</span> : ep.number || "?"}{watched && !active && <span className="absolute bottom-1 left-1/2 h-0.5 w-5 -translate-x-1/2 rounded-full bg-primary" aria-label="Watched" />}</button>
                 })}
               </div>
               {filteredEpisodes.length === 0 && <p className="p-6 text-center text-sm text-muted-foreground">No episodes match your search.</p>}
+              {visibleEpisodes.length < filteredEpisodes.length && (
+                <button type="button" onClick={() => setEpisodeLimit((limit) => limit + 120)} className="mt-2 min-h-9 w-full rounded-lg border border-white/10 text-xs font-medium text-muted-foreground hover:text-foreground">
+                  Show more episodes ({filteredEpisodes.length - visibleEpisodes.length} remaining)
+                </button>
+              )}
             </div>
           </div>
         </aside>
