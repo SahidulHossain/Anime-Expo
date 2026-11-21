@@ -96,13 +96,22 @@ export function Player({ anime, episode }: { anime: AnimeDetail; episode: Episod
     [anime.id, router, type],
   )
 
-  const goFullscreen = useCallback(() => {
+  const goFullscreen = useCallback(async () => {
     const el = containerRef.current
     if (!el) return
     if (document.fullscreenElement) {
-      document.exitFullscreen()
-    } else {
-      el.requestFullscreen?.()
+      await document.exitFullscreen()
+      screen.orientation?.unlock?.()
+      return
+    }
+
+    try {
+      await el.requestFullscreen?.()
+      await (screen.orientation as ScreenOrientation & {
+        lock?: (orientation: "landscape") => Promise<void>
+      }).lock?.("landscape")
+    } catch {
+      // Orientation locking is unsupported in some browsers and is best-effort.
     }
   }, [])
 
@@ -194,7 +203,7 @@ export function Player({ anime, episode }: { anime: AnimeDetail; episode: Episod
                   <div className="flex min-w-0 overflow-hidden rounded-lg border border-white/10 bg-black/25">
                     {canUseServerOne && <button type="button" onClick={() => { setType(t); setServer(1) }} aria-pressed={type === t && server === 1} className={cn("min-h-10 min-w-0 flex-1 whitespace-nowrap px-1 text-[9px] font-bold leading-tight transition-colors duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary sm:text-[11px]", type === t && server === 1 ? "bg-gradient-to-r from-red-800 to-primary text-white" : "text-muted-foreground hover:bg-white/5 hover:text-foreground")}>Server 1 · FHD</button>}
                     {canUseServerTwo && <button type="button" onClick={() => { setType(t); setServer(2) }} aria-pressed={type === t && server === 2} className={cn("min-h-10 min-w-0 flex-1 whitespace-nowrap px-1 text-[9px] font-bold leading-tight transition-colors duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary sm:text-[11px]", type === t && server === 2 ? "bg-gradient-to-r from-red-800 to-primary text-white" : "text-muted-foreground hover:bg-white/5 hover:text-foreground")}>Server 2 · FHD / 4K</button>}
-                    {canUseServerThree && <button type="button" onClick={() => { setType(t); setServer(3) }} aria-pressed={type === t && server === 3} className={cn("min-h-10 min-w-0 flex-1 whitespace-nowrap px-1 text-[9px] font-bold leading-tight transition-colors duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary sm:text-[11px]", type === t && server === 3 ? "bg-gradient-to-r from-red-800 to-primary text-white" : "text-muted-foreground hover:bg-white/5 hover:text-foreground")}>Server 3 · AnimeEmbed</button>}
+                    {canUseServerThree && <button type="button" onClick={() => { setType(t); setServer(3) }} aria-pressed={type === t && server === 3} className={cn("min-h-10 min-w-0 flex-1 whitespace-nowrap px-1 text-[9px] font-bold leading-tight transition-colors duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary sm:text-[11px]", type === t && server === 3 ? "bg-gradient-to-r from-red-800 to-primary text-white" : "text-muted-foreground hover:bg-white/5 hover:text-foreground")}>Server 3</button>}
                   </div>
                 </div>
               ))}
