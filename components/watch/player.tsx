@@ -83,7 +83,8 @@ export function Player({ anime, episode }: { anime: AnimeDetail; episode: Episod
     (event: SyntheticEvent<HTMLIFrameElement>) => {
       const frame = event.currentTarget
       if (frame !== iframeRef.current) return
-      failover.markVerifying()
+      const token = failover.attemptToken
+      failover.markReady(token)
       videoCleanupRef.current?.()
       videoCleanupRef.current = null
       try {
@@ -92,12 +93,12 @@ export function Player({ anime, episode }: { anime: AnimeDetail; episode: Episod
         const onPlaying = () => {
           if (frame !== iframeRef.current) return
           if (video.currentTime > 0) playbackPositionRef.current = video.currentTime
-          failover.markPlaying()
+          failover.markPlaying(token)
         }
         const onTimeUpdate = () => {
           if (frame !== iframeRef.current) return
           playbackPositionRef.current = video.currentTime
-          if (!video.paused && !video.ended && video.currentTime > 0) failover.markPlaying()
+          if (!video.paused && !video.ended && video.currentTime > 0) failover.markPlaying(token)
         }
         const onError = () => failover.failServer(failover.activeServerId, failover.attemptToken)
         const resume = () => {
@@ -120,7 +121,7 @@ export function Player({ anime, episode }: { anime: AnimeDetail; episode: Episod
         // Cross-origin embeds cannot be inspected; the UI stays in verification mode.
       }
     },
-    [failover.activeServerId, failover.attemptToken, failover.failServer, failover.markPlaying, failover.markVerifying],
+    [failover.activeServerId, failover.attemptToken, failover.failServer, failover.markPlaying, failover.markReady],
   )
 
   useEffect(() => () => videoCleanupRef.current?.(), [failover.attemptToken, streamUrl])
@@ -201,7 +202,7 @@ export function Player({ anime, episode }: { anime: AnimeDetail; episode: Episod
       <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_320px] lg:gap-5">
         <div className="min-w-0">
           {/* Player */}
-          <div ref={containerRef} className="overflow-hidden rounded-2xl border border-white/10 bg-black shadow-2xl shadow-black/30">
+          <div ref={containerRef} className="overflow-hidden rounded-xl bg-black shadow-xl shadow-black/25 [&:fullscreen]:flex [&:fullscreen]:items-center [&:fullscreen]:justify-center [&:fullscreen>div]:aspect-auto [&:fullscreen>div]:h-full [&:fullscreen>div]:w-full">
             <div className="relative aspect-video w-full">
               {streamUrl && failover.phase !== "failed" && failover.phase !== "selecting" ? (
                 <iframe
@@ -217,34 +218,22 @@ export function Player({ anime, episode }: { anime: AnimeDetail; episode: Episod
                   className="absolute inset-0 h-full w-full border-0"
                 />
               ) : failover.phase === "failed" ? (
-                <div role="alert" className="absolute inset-0 flex flex-col items-center justify-center gap-3 px-6 text-center">
-                  <CircleAlert className="size-8 text-primary" />
-                  <p className="max-w-md text-sm text-white">{failover.statusMessage || "Unable to play this episode right now. Try again or select a server manually."}</p>
-                  <div className="flex flex-wrap justify-center gap-2">
-                    <button type="button" onClick={failover.retryAll} className="inline-flex min-h-10 items-center gap-2 rounded-lg bg-primary px-3 py-2 text-xs font-semibold text-primary-foreground">
-                      <RefreshCw className="size-3.5" /> Retry all servers
+                <div role="alert" className="absolute inset-0 flex flex-col items-center justify-center gap-2 px-5 text-center">
+                  <CircleAlert className="size-7 text-primary" />
+                  <p className="text-sm font-semibold text-white">Unable to play this episode</p>
+                  <p className="max-w-md text-xs text-white/65">We couldn&apos;t connect to a working video source right now.</p>
+                  <div className="mt-1 flex flex-wrap justify-center gap-2">
+                    <button type="button" onClick={failover.retryAll} className="inline-flex min-h-9 items-center gap-1.5 rounded-lg bg-primary px-3 text-xs font-semibold text-primary-foreground">
+                      <RefreshCw className="size-3.5" /> Try again
                     </button>
-                    <button type="button" onClick={failover.retryCurrent} className="inline-flex min-h-10 items-center gap-2 rounded-lg border border-white/15 px-3 py-2 text-xs font-semibold text-white">
-                      Retry current
-                    </button>
-                    <button type="button" onClick={failover.switchServer} className="inline-flex min-h-10 items-center gap-2 rounded-lg border border-white/15 px-3 py-2 text-xs font-semibold text-white">
-                      Switch server
-                    </button>
-                    <button type="button" onClick={() => window.location.reload()} className="inline-flex min-h-10 items-center gap-2 rounded-lg border border-white/15 px-3 py-2 text-xs font-semibold text-white">
-                      Clear &amp; reload
-                    </button>
+                    <button type="button" onClick={failover.switchServer} className="min-h-9 rounded-lg border border-white/15 px-3 text-xs font-semibold text-white">Choose server</button>
+                    <button type="button" onClick={() => window.location.reload()} className="min-h-9 rounded-lg border border-white/15 px-3 text-xs font-semibold text-white">Reload player</button>
                   </div>
                 </div>
               ) : (
                 <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 px-6 text-center text-sm text-muted-foreground">
                   <LoaderCircle className="size-6 animate-spin text-primary" aria-hidden="true" />
                   <p>{failover.autoMode ? "AUTO · Finding best server…" : "Loading selected server…"}</p>
-                </div>
-              )}
-              {streamUrl && (failover.phase === "loading" || failover.phase === "switching") && (
-                <div className="pointer-events-none absolute left-3 top-3 inline-flex items-center gap-2 rounded-full border border-white/10 bg-black/75 px-3 py-1.5 text-xs font-medium text-white" aria-hidden="true">
-                  <LoaderCircle className="size-3.5 animate-spin text-primary" aria-hidden="true" />
-                  {failover.statusMessage || `Loading Server ${failover.activeServerId}…`}
                 </div>
               )}
             </div>
@@ -284,7 +273,7 @@ export function Player({ anime, episode }: { anime: AnimeDetail; episode: Episod
             <div className="grid gap-3">
               <div className="flex flex-wrap items-center justify-between gap-2">
                 <p className="flex min-h-8 items-center gap-2 text-xs font-semibold text-foreground" role="status" aria-live="polite">
-                  {!failover.ready || failover.phase === "loading" || failover.phase === "verifying" || failover.phase === "switching" ? (
+                  {!failover.ready || failover.phase === "loading" || failover.phase === "switching" ? (
                     <LoaderCircle className="size-3.5 animate-spin text-primary" aria-hidden="true" />
                   ) : failover.phase === "playing" ? (
                     <Check className="size-3.5 text-emerald-400" aria-hidden="true" />
@@ -293,21 +282,18 @@ export function Player({ anime, episode }: { anime: AnimeDetail; episode: Episod
                   ) : null}
                   <span>
                     {!failover.ready
-                      ? `${failover.autoMode ? "AUTO" : "MANUAL"} · Finding best server…`
-                      : failover.phase === "failed"
-                        ? failover.statusMessage
-                        : failover.phase === "playing"
-                          ? `Playback started · Server ${failover.activeServerId}`
-                          : failover.phase === "verifying"
-                            ? `${failover.autoMode ? "AUTO" : "MANUAL"} · Server ${failover.activeServerId} · Verifying playback`
-                            : failover.statusMessage || `${failover.autoMode ? "AUTO" : "MANUAL"} · ${failover.phase === "selecting" ? "Finding best server…" : `Loading Server ${failover.activeServerId}…`}`}
+                      ? "Finding a server…"
+                      : failover.phase === "playing"
+                        ? `Playback detected · Server ${failover.activeServerId}`
+                        : failover.phase === "ready"
+                          ? `Player loaded · Server ${failover.activeServerId}`
+                          : failover.phase === "failed"
+                            ? failover.statusMessage
+                            : failover.statusMessage || `Connecting to Server ${failover.activeServerId}…`}
                   </span>
                 </p>
-                {failover.ready && failover.phase === "verifying" && (
-                  <div className="flex gap-2">
-                    <button type="button" onClick={failover.markPlaying} className="min-h-9 rounded-lg bg-primary/15 px-3 text-xs font-semibold text-primary hover:bg-primary/25">Playback started</button>
-                    <button type="button" onClick={failover.switchServer} className="min-h-9 rounded-lg border border-border px-3 text-xs font-semibold text-muted-foreground hover:text-foreground">Switch server</button>
-                  </div>
+                {failover.ready && failover.phase === "ready" && (
+                  <button type="button" onClick={failover.switchServer} className="min-h-9 rounded-lg border border-border px-3 text-xs font-semibold text-muted-foreground hover:text-foreground">Video not playing? Switch server</button>
                 )}
               </div>
 
