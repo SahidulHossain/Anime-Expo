@@ -221,29 +221,27 @@ export function Player({ anime, episode }: { anime: AnimeDetail; episode: Episod
                     className="absolute inset-0 h-full w-full border-0"
                   />
                   {(failover.phase === "loading" || failover.phase === "switching") && (
-                    <div className="pointer-events-none absolute inset-0 flex items-center justify-center bg-black/70 text-xs font-medium text-white/80" role="status" aria-live="polite">
-                      <LoaderCircle className="mr-2 size-4 animate-spin text-primary" aria-hidden="true" />
-                      Connecting to Server {failover.activeServerId}…
+                    <div className="pointer-events-none absolute inset-0 flex items-center justify-center bg-black/70" aria-hidden="true">
+                      <LoaderCircle className="size-5 animate-spin text-primary" />
                     </div>
                   )}
                 </>
               ) : failover.phase === "failed" ? (
                 <div role="alert" className="absolute inset-0 flex flex-col items-center justify-center gap-2 px-5 text-center">
                   <CircleAlert className="size-7 text-primary" />
-                  <p className="text-sm font-semibold text-white">Unable to play this episode</p>
-                  <p className="max-w-md text-xs text-white/65">We couldn&apos;t connect to a working video source right now.</p>
+                  <p className="text-sm font-semibold text-white">{failover.statusMessage}</p>
+                  <p className="max-w-md text-xs text-white/65">Try another server or retry playback. Your episode and language selection will be kept.</p>
                   <div className="mt-1 flex flex-wrap justify-center gap-2">
                     <button type="button" onClick={failover.retryAll} className="inline-flex min-h-9 items-center gap-1.5 rounded-lg bg-primary px-3 text-xs font-semibold text-primary-foreground">
-                      <RefreshCw className="size-3.5" /> Try again
+                      <RefreshCw className="size-3.5" /> Retry All Servers
                     </button>
-                    <button type="button" onClick={failover.switchServer} className="min-h-9 rounded-lg border border-white/15 px-3 text-xs font-semibold text-white">Choose server</button>
-                    <button type="button" onClick={() => window.location.reload()} className="min-h-9 rounded-lg border border-white/15 px-3 text-xs font-semibold text-white">Reload player</button>
+                    <button type="button" onClick={failover.retryCurrent} className="min-h-9 rounded-lg border border-white/15 px-3 text-xs font-semibold text-white">Retry Current Server</button>
                   </div>
                 </div>
               ) : (
                 <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 px-6 text-center text-sm text-muted-foreground">
                   <LoaderCircle className="size-6 animate-spin text-primary" aria-hidden="true" />
-                  <p>{failover.autoMode ? "AUTO · Finding best server…" : "Loading selected server…"}</p>
+                  <p>{failover.statusMessage || `Loading Server ${failover.activeServerId}…`}</p>
                 </div>
               )}
             </div>
@@ -290,58 +288,54 @@ export function Player({ anime, episode }: { anime: AnimeDetail; episode: Episod
           <div className="mt-3 rounded-xl border border-white/10 bg-card/90 p-2 sm:mt-3 sm:p-2.5">
             <div className="grid gap-3">
               <div className="flex flex-wrap items-center justify-between gap-2">
-                <p className="flex min-h-8 items-center gap-2 text-xs font-semibold text-foreground" role="status" aria-live="polite">
+                {failover.phase !== "failed" && <p className="flex min-h-8 items-center gap-2 text-xs font-semibold text-foreground" role="status" aria-live="polite">
                   {!failover.ready || failover.phase === "loading" || failover.phase === "switching" ? (
                     <LoaderCircle className="size-3.5 animate-spin text-primary" aria-hidden="true" />
                   ) : failover.phase === "playing" ? (
                     <Check className="size-3.5 text-emerald-400" aria-hidden="true" />
-                  ) : failover.phase === "failed" ? (
-                    <CircleAlert className="size-3.5 text-primary" aria-hidden="true" />
                   ) : null}
                   <span>
-                    {!failover.ready
-                      ? "Finding a server…"
+                      {!failover.ready
+                      ? "Loading player…"
                       : failover.phase === "playing"
-                        ? "Playback confirmed"
+                        ? `Playback started · Server ${failover.activeServerId}`
                         : failover.phase === "unverified"
-                          ? `Playback unverified · Server ${failover.activeServerId}`
+                          ? `Playback not verified · Server ${failover.activeServerId}`
                           : failover.phase === "ready"
-                            ? `Player loaded · Server ${failover.activeServerId}`
-                          : failover.phase === "failed"
-                            ? failover.statusMessage
-                            : failover.statusMessage || `Connecting to Server ${failover.activeServerId}…`}
+                            ? `Connecting to Server ${failover.activeServerId}…`
+                            : failover.statusMessage || `Loading Server ${failover.activeServerId}…`}
                   </span>
-                </p>
+                </p>}
                 {failover.ready && (failover.phase === "ready" || failover.phase === "unverified") && (
                   <button type="button" onClick={failover.switchServer} className="min-h-9 rounded-lg border border-border px-3 text-xs font-semibold text-muted-foreground hover:text-foreground">Video not playing? Switch server</button>
                 )}
               </div>
 
-              <div className="flex flex-wrap items-center gap-1.5" role="group" aria-label="Playback mode and server selection">
-                <button type="button" onClick={() => failover.setMode(true)} aria-pressed={failover.autoMode} className={cn("min-h-9 rounded-lg border px-2.5 text-[11px] font-bold transition-colors", failover.autoMode ? "border-primary bg-primary/15 text-primary" : "border-white/10 bg-black/20 text-muted-foreground hover:text-foreground")}>AUTO</button>
-                {servers.map((serverOption) => (
-                  <button
-                    key={serverOption.id}
-                    type="button"
-                    disabled={!serverOption.url}
-                    onClick={() => failover.selectServer(serverOption.id)}
-                    aria-pressed={!failover.autoMode && failover.activeServerId === serverOption.id}
-                    aria-label={`Server ${serverOption.id}${!serverOption.url ? " unavailable" : ""}`}
-                    className={cn("min-h-9 rounded-lg border px-2.5 text-[11px] font-semibold transition-colors disabled:cursor-not-allowed disabled:opacity-40", !failover.autoMode && failover.activeServerId === serverOption.id ? "border-primary bg-primary/15 text-primary" : "border-white/10 bg-black/20 text-muted-foreground hover:text-foreground")}
-                  >
-                    S{serverOption.id}
-                  </button>
-                ))}
-                <span className="mx-0.5 h-5 w-px bg-white/10" aria-hidden="true" />
+              <div className="grid gap-2.5 sm:grid-cols-[auto_minmax(0,1fr)] sm:items-center">
                 <div className="flex gap-1.5" role="group" aria-label="Audio language">
                   {(["sub", "dub"] as const).map((language) => {
                     const supported = language === "sub" ? hasSub : hasDub
                     return (
-                      <button key={language} type="button" disabled={!supported} onClick={() => changeType(language)} aria-pressed={type === language} className={cn("min-h-9 rounded-lg border px-2.5 text-[11px] font-bold uppercase transition-colors disabled:cursor-not-allowed disabled:opacity-40", type === language ? "border-primary bg-primary/15 text-primary" : "border-white/10 bg-black/20 text-muted-foreground hover:text-foreground")}>
+                      <button key={language} type="button" disabled={!supported} onClick={() => changeType(language)} aria-pressed={type === language} className={cn("min-h-9 min-w-12 rounded-lg border px-2.5 text-[11px] font-bold uppercase transition-colors disabled:cursor-not-allowed disabled:opacity-40", type === language ? "border-primary bg-primary/15 text-primary" : "border-white/10 bg-black/20 text-muted-foreground hover:text-foreground")}>
                         {language}
                       </button>
                     )
                   })}
+                </div>
+                <div className="grid grid-cols-1 gap-2 min-[380px]:grid-cols-3 sm:gap-1.5" role="group" aria-label={`Server selection for ${type.toUpperCase()}`}>
+                  {servers.map((serverOption) => (
+                    <button
+                      key={serverOption.id}
+                      type="button"
+                      onClick={() => failover.selectServer(serverOption.id)}
+                      aria-pressed={failover.activeServerId === serverOption.id}
+                      aria-label={`Server ${serverOption.id}${serverOption.id === "1" ? " · FHD" : serverOption.id === "2" ? " · FHD / 4K" : ""}`}
+                      className={cn("min-h-11 min-w-0 rounded-lg border px-2 py-1 text-[10px] font-semibold leading-tight transition-colors", failover.activeServerId === serverOption.id ? "border-primary bg-primary/15 text-primary" : "border-white/10 bg-black/20 text-muted-foreground hover:text-foreground")}
+                    >
+                      <span className="block">Server {serverOption.id}</span>
+                      {serverOption.id !== "3" && <span className="mt-0.5 block text-[9px] font-medium opacity-75">{serverOption.id === "1" ? "FHD" : "FHD / 4K"}</span>}
+                    </button>
+                  ))}
                 </div>
               </div>
             </div>

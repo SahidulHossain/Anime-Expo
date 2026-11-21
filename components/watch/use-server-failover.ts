@@ -8,7 +8,7 @@ type Phase = "selecting" | "loading" | "ready" | "playing" | "unverified" | "swi
 type ServerOption = { id: ServerId; url?: string }
 type Health = { failedAt?: number; succeededAt?: number; averageLoadMs?: number }
 
-const STARTUP_TIMEOUT_MS = 10_000
+const STARTUP_TIMEOUT_MS = 9_000
 const FAILURE_COOLDOWN_MS = 2 * 60_000
 const sessionPreferredServer = new Map<string, ServerId>()
 const serverHealth = new Map<string, Health>()
@@ -47,15 +47,11 @@ export function useServerFailover({
   const chooseBest = useCallback((excluded: Set<ServerId>) => {
     const eligible = servers.filter((server) => server.url && !excluded.has(server.id))
     eligible.sort((a, b) => {
-      const score = (id: ServerId) => {
-        const health = serverHealth.get(healthKey(animeId, episodeId, type, id))
-        const preferred = sessionPreferredServer.get(sessionKey) === id ? -1_000 : 0
-        const recentSuccess = health?.succeededAt && Date.now() - health.succeededAt < 30 * 60_000 ? -200 : 0
-        const recentFailure = health?.failedAt && Date.now() - health.failedAt < FAILURE_COOLDOWN_MS ? 500 : 0
-        const loadPenalty = health?.averageLoadMs ? Math.min(100, health.averageLoadMs / 1_000) : 0
-        return preferred + recentSuccess + recentFailure + loadPenalty + Number(id)
-      }
-      return score(a.id) - score(b.id)
+      const healthA = serverHealth.get(healthKey(animeId, episodeId, type, a.id))
+      const healthB = serverHealth.get(healthKey(animeId, episodeId, type, b.id))
+      const recentlyFailedA = healthA?.failedAt && Date.now() - healthA.failedAt < FAILURE_COOLDOWN_MS ? 1 : 0
+      const recentlyFailedB = healthB?.failedAt && Date.now() - healthB.failedAt < FAILURE_COOLDOWN_MS ? 1 : 0
+      return recentlyFailedA - recentlyFailedB || Number(a.id) - Number(b.id)
     })
     return eligible[0]
   }, [animeId, episodeId, sessionKey, servers, type])
@@ -67,7 +63,7 @@ export function useServerFailover({
     attemptTokenRef.current += 1
     setAttemptToken(attemptTokenRef.current)
     setPhase("loading")
-    setStatusMessage(`Connecting to Server ${serverId}…`)
+    setStatusMessage(`Loading Server ${serverId}…`)
   }, [])
 
   const setMode = useCallback((enabled: boolean) => {
@@ -87,13 +83,20 @@ export function useServerFailover({
     autoModeRef.current = false
     setAutoMode(false)
     attemptedRef.current.ids.delete(serverId)
+    if (!servers.find((server) => server.id === serverId)?.url) {
+      activeServerRef.current = serverId
+      setActiveServerId(serverId)
+      setPhase("failed")
+      setStatusMessage(`Server ${serverId} couldn’t play this episode.`)
+      return
+    }
     startServer(serverId)
-  }, [startServer])
+  }, [servers, startServer])
 
   const markReady = useCallback((expectedToken = attemptTokenRef.current) => {
     if (expectedToken !== attemptTokenRef.current) return
     setPhase((current) => current === "loading" || current === "unverified" ? "ready" : current)
-    setStatusMessage(`Player loaded · Server ${activeServerRef.current}`)
+    setStatusMessage(`Connecting to Server ${activeServerRef.current}…`)
   }, [])
 
   const markUnverified = useCallback((expectedToken = attemptTokenRef.current) => {
@@ -114,7 +117,7 @@ export function useServerFailover({
       averageLoadMs: previous?.averageLoadMs ? Math.round(previous.averageLoadMs * 0.7 + loadTime * 0.3) : loadTime,
     })
     setPhase("playing")
-    setStatusMessage(`Playback detected · Server ${serverId}`)
+    setStatusMessage(`Playback started · Server ${serverId}`)
   }, [animeId, episodeId, sessionKey, type])
 
   const failServer = useCallback((serverId = activeServerRef.current, expectedToken = attemptTokenRef.current) => {
@@ -125,19 +128,18 @@ export function useServerFailover({
 
     if (!autoModeRef.current) {
       setPhase("failed")
-      setStatusMessage(`Server ${serverId} is unavailable.`)
+      setStatusMessage(`Server ${serverId} couldn’t play this episode.`)
       return
     }
 
     const next = chooseBest(attemptedRef.current.ids)
     if (!next) {
       setPhase("failed")
-      setStatusMessage("Unable to connect to available servers")
+      setStatusMessage("We couldn’t play this episode using the available servers.")
       return
     }
-    setPhase("switching")
-    setStatusMessage(`Server ${serverId} unavailable · Switching…`)
     startServer(next.id)
+    setStatusMessage(`Server ${serverId} unavailable. Trying Server ${next.id}…`)
   }, [animeId, chooseBest, episodeId, episodeKey, startServer, type])
 
   const switchServer = useCallback(() => {
@@ -189,9 +191,11 @@ export function useServerFailover({
   useEffect(() => {
     if (phase !== "loading" && phase !== "ready") return
     const expectedToken = attemptToken
-    const timeout = window.setTimeout(() => markUnverified(expectedToken), STARTUP_TIMEOUT_MS)
+    const expectedServer = activeServerId
+    const remaining = Math.max(0, STARTUP_TIMEOUT_MS - (Date.now() - attemptStartedAtRef.current))
+    const timeout = window.setTimeout(() => failServer(expectedServer, expectedToken), remaining)
     return () => window.clearTimeout(timeout)
-  }, [attemptToken, markUnverified, phase])
+  }, [activeServerId, attemptToken, failServer, phase])
 
   const activeServer = servers.find((server) => server.id === activeServerId)
   const ready = initializedRef.current && attemptedRef.current.key === episodeKey
