@@ -4,14 +4,16 @@ import { useState } from "react"
 import Link from "next/link"
 import { Info } from "lucide-react"
 import type { AnimeDetail, AnimeSummary } from "@/lib/types"
+import type { AniListDetails } from "@/lib/anilist-types"
+import { AniListCharacters, AniListFranchise, AniListProduction, AniListRecommendations, AniListTags, AniListTrailer } from "./anilist-details-sections"
 import { EpisodeList } from "./episode-list"
 import { AnimeCarousel } from "@/components/anime-carousel"
 import { cn } from "@/lib/utils"
 
-const tabs = ["Home", "Episodes", "Related"] as const
+type DetailTab = "Home" | "Episodes" | "Characters" | "Franchise" | "Related"
 
-export function AnimeDetailsTabs({ anime, related }: { anime: AnimeDetail; related: AnimeSummary[] }) {
-  const [active, setActive] = useState<(typeof tabs)[number]>("Home")
+export function AnimeDetailsTabs({ anime, related, details }: { anime: AnimeDetail; related: AnimeSummary[]; details: AniListDetails | null }) {
+  const [active, setActive] = useState<DetailTab>("Home")
   const [expanded, setExpanded] = useState(false)
   const similar = anime.genres.length > 0 ? related.filter((item) => {
     if (item.id === anime.id || !item.poster || !item.genres.length) return false
@@ -19,10 +21,23 @@ export function AnimeDetailsTabs({ anime, related }: { anime: AnimeDetail; relat
     const sameKnownType = !anime.type || !item.type || anime.type.trim().toLowerCase() === item.type.trim().toLowerCase()
     return sharedGenres >= 2 && sameKnownType
   }).sort((a, b) => b.genres.filter((genre) => anime.genres.some((animeGenre) => animeGenre.toLowerCase() === genre.toLowerCase())).length - a.genres.filter((genre) => anime.genres.some((animeGenre) => animeGenre.toLowerCase() === genre.toLowerCase())).length || Number(b.score || 0) - Number(a.score || 0)).slice(0, 12) : []
+  const recommendations = details?.recommendations ?? []
+  const recommendationTitles = new Set(recommendations.map((item) => normalizeTitle(item.title)))
+  const uniqueSimilar = similar.filter((item) => ![item.title, ...(item.alternativeTitles ?? [])].some((title) => recommendationTitles.has(normalizeTitle(title))))
+  const relations = details?.relations ?? []
+  const characters = details?.characters ?? []
+  const hasProduction = Boolean(details?.studios.length || details?.staff.length)
+  const hasThemes = Boolean(details?.tags.some((tag) => (tag.rank ?? 0) >= 45 && !tag.isMediaSpoiler && !tag.isGeneralSpoiler))
   const description = validText(anime.description) ? anime.description.trim() : undefined
   const categories = anime.categories?.filter((category) => validText(category) && !anime.genres.some((genre) => genre.toLowerCase() === category.toLowerCase() || (genre.toLowerCase() === "sci-fi" && category.toLowerCase() === "science fiction"))) ?? []
-  const information = [isValidDuration(anime.duration), validText(anime.ageRating), isValidDate(anime.startDate), isValidDate(anime.endDate), Boolean(anime.alternativeTitles?.some(validText)), categories.length > 0].some(Boolean)
-  const visibleTabs = similar.length ? tabs : ["Home", "Episodes"] as const
+  const showAniListStats = [anime.aniListMeanScore, anime.aniListPopularity, anime.aniListFavourites, anime.aniListTrending].some((value) => typeof value === "number" && value > 0)
+  const information = [isValidDuration(anime.duration), validText(anime.ageRating), isValidDate(anime.startDate), isValidDate(anime.endDate), Boolean(anime.alternativeTitles?.some(validText)), categories.length > 0, validText(anime.season), validText(anime.countryOfOrigin), showAniListStats, Boolean(details?.rankings.length), Boolean(details?.scoreDistribution.length), Boolean(details?.officialLinks.length), validText(anime.aniListUrl)].some(Boolean)
+  const visibleTabs: DetailTab[] = ["Home", "Episodes"]
+  if (characters.length) visibleTabs.push("Characters")
+  if (relations.length) visibleTabs.push("Franchise")
+  if (uniqueSimilar.length || recommendations.length) visibleTabs.push("Related")
+  const featuredRank = details?.rankings.filter((item) => item.type === "RATED" || item.type === "POPULAR").sort((a, b) => a.rank - b.rank)[0]
+  const topScores = details?.scoreDistribution.slice().sort((a, b) => b.amount - a.amount).slice(0, 3) ?? []
 
   return (
     <section className="mt-5 pb-12 sm:mt-7">
@@ -42,20 +57,40 @@ export function AnimeDetailsTabs({ anime, related }: { anime: AnimeDetail; relat
           {validText(anime.ageRating) && <InfoRow label="Age rating" value={anime.ageRating!} />}
           {isValidDate(anime.startDate) && <InfoRow label="Start date" value={anime.startDate!} />}
           {isValidDate(anime.endDate) && <InfoRow label="End date" value={anime.endDate!} />}
+          {(validText(anime.season) || anime.seasonYear) && <InfoRow label="Release season" value={[anime.season, anime.seasonYear].filter(Boolean).join(" ")} />}
+          {validText(anime.countryOfOrigin) && /^[A-Z]{2}$/.test(anime.countryOfOrigin) && <InfoRow label="Country of origin" value={anime.countryOfOrigin} />}
+          {validText(anime.sourceType) && <InfoRow label="Source material" value={anime.sourceType.replaceAll("_", " ").toLowerCase()} />}
+          {typeof anime.aniListMeanScore === "number" && anime.aniListMeanScore > 0 && anime.aniListMeanScore <= 100 && <InfoRow label="AniList mean score" value={`${(anime.aniListMeanScore / 10).toFixed(1)} / 10`} />}
+          {typeof anime.aniListPopularity === "number" && anime.aniListPopularity > 0 && <InfoRow label="AniList popularity" value={formatCount(anime.aniListPopularity)} />}
+          {typeof anime.aniListFavourites === "number" && anime.aniListFavourites > 0 && <InfoRow label="AniList favourites" value={formatCount(anime.aniListFavourites)} />}
+          {typeof anime.aniListTrending === "number" && anime.aniListTrending > 0 && <InfoRow label="AniList trending" value={formatCount(anime.aniListTrending)} />}
+          {featuredRank && <InfoRow label="AniList ranking" value={`#${featuredRank.rank} · ${featuredRank.context}`} />}
           {anime.alternativeTitles?.filter(validText).length ? <InfoRow label="Also known as" value={anime.alternativeTitles.filter(validText).join(", ")} /> : null}
           {categories.length ? <InfoRow label="Categories" value={categories.slice(0, 6).join(", ")} /> : null}
-          </dl></div>}
+          </dl>
+          {topScores.length > 0 && <div className="mt-3 rounded-xl border border-white/[0.08] bg-white/[0.025] p-4"><h3 className="text-xs font-semibold text-white">AniList score distribution</h3><ul className="mt-2 flex flex-wrap gap-x-4 gap-y-1">{topScores.map((item) => <li key={item.score} className="text-xs text-muted-foreground">{(item.score / 10).toFixed(1)}/10 · {formatCount(item.amount)} votes</li>)}</ul></div>}
+          {(validText(anime.aniListUrl) || details?.officialLinks.length) && <div className="mt-3 flex flex-wrap gap-2">{validText(anime.aniListUrl) && <ExternalResourceLink href={anime.aniListUrl} label="AniList" />}{details?.officialLinks.map((link) => <ExternalResourceLink key={`${link.site}-${link.url}`} href={link.url} label={link.site} />)}</div>}
+          </div>}
           {anime.genres.some(validText) && <div className="flex flex-wrap gap-2 lg:col-span-2">{anime.genres.filter(validText).map((genre) => <Link key={genre} href={`/browse?genre=${encodeURIComponent(genre)}`} className="rounded-full border border-white/10 px-3 py-1.5 text-xs text-muted-foreground hover:border-primary/50 hover:text-primary">{genre.trim()}</Link>)}</div>}
         </div>}
+        {active === "Home" && details && (hasProduction || hasThemes || details.trailer) && <div className="mt-6 grid gap-5 lg:grid-cols-2">{hasProduction && <AniListProduction details={details} />}{hasThemes && <AniListTags tags={details.tags} />}{details.trailer && <AniListTrailer details={details} title={anime.title} />}</div>}
         {active === "Episodes" && <EpisodeList anime={anime} />}
+        {active === "Characters" && <AniListCharacters characters={characters} />}
+        {active === "Franchise" && <div className="space-y-3"><h2 className="text-lg font-bold">Franchise relationships</h2><AniListFranchise relations={relations} /></div>}
         {active === "Related" && <div className="space-y-8">
-          {similar.length > 0 && <RelatedSection title="More Like This Anime" items={similar} />}
+          {recommendations.length > 0 && <div className="space-y-3"><h2 className="text-lg font-bold">AniList recommendations</h2><AniListRecommendations recommendations={recommendations} /></div>}
+          {uniqueSimilar.length > 0 && <RelatedSection title="More Like This" items={uniqueSimilar} />}
         </div>}
       </div>
     </section>
   )
 }
 
+function normalizeTitle(value: string) {
+  return value.normalize("NFKD").replace(/[\u0300-\u036f]/g, "").toLowerCase().replace(/&/g, "and").replace(/[^\p{L}\p{N}]+/gu, "")
+}
+function formatCount(value: number) { return new Intl.NumberFormat("en").format(value) }
+function ExternalResourceLink({ href, label }: { href: string; label: string }) { return <a href={href} target="_blank" rel="noreferrer" className="rounded-full border border-white/10 px-3 py-1.5 text-xs text-muted-foreground hover:border-primary/50 hover:text-primary">{label}</a> }
 function validText(value?: string): value is string {
   return typeof value === "string" && Boolean(value.trim()) && !/^(?:n\/?a|unknown|null|undefined|0)$/i.test(value.trim())
 }
