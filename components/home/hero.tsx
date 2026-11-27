@@ -6,11 +6,12 @@ import { useEffect, useState } from "react"
 import { ChevronLeft, ChevronRight, Info, Play, Star } from "lucide-react"
 import { WatchlistButton } from "@/components/anime/watchlist-button"
 import type { AnimeSummary } from "@/lib/types"
-import type { KitsuMetadata } from "@/lib/kitsu-types"
+import type { AnimeMetadataResponse } from "@/lib/anilist-types"
+import { hasMissingExternalFields } from "@/lib/anime-metadata-merge"
 
-const fetchKitsu = async (url: string): Promise<{ metadata: KitsuMetadata | null }> => {
+const fetchAnimeMetadata = async (url: string): Promise<AnimeMetadataResponse> => {
   const response = await fetch(url)
-  if (!response.ok) return { metadata: null }
+  if (!response.ok) return { metadata: null, details: null }
   return response.json()
 }
 
@@ -18,7 +19,19 @@ export function Hero({ anime, slides = [anime] }: { anime: AnimeSummary; slides?
   const [index, setIndex] = useState(Math.max(0, slides.findIndex((item) => item.id === anime.id)))
   const [paused, setPaused] = useState(false)
   const current = slides[index] ?? anime
-  const { data: enrichment } = useSWR(!current.banner ? `/api/kitsu-metadata?id=${current.id}` : null, fetchKitsu, { revalidateOnFocus: false, shouldRetryOnError: false, dedupingInterval: 30_000 })
+  const needsEnrichment = hasMissingExternalFields(current)
+  const { data: enrichment } = useSWR(needsEnrichment ? `/api/anime-metadata?id=${current.id}` : null, fetchAnimeMetadata, { revalidateOnFocus: false, shouldRetryOnError: false, dedupingInterval: 30_000 })
+  const displayMetadata = enrichment?.metadata
+  const displayTitle = displayMetadata?.title || current.title
+  const displayPoster = displayMetadata?.poster || current.poster
+  const displayBanner = displayMetadata?.banner || current.banner
+  const displayDescription = displayMetadata?.description || current.description
+  const displayScore = displayMetadata?.score || current.score
+  const displayRatingSource = displayMetadata?.ratingSource || current.ratingSource
+  const displayGenres = displayMetadata?.genres?.length ? displayMetadata.genres : current.genres
+  const displayYear = displayMetadata?.year || current.year
+  const displayType = displayMetadata?.type || current.type
+  const displayEpisodes = displayMetadata?.episodeCount || current.episodeCount
 
   useEffect(() => {
     if (paused || slides.length < 2 || window.matchMedia("(prefers-reduced-motion: reduce)").matches) return
@@ -30,7 +43,7 @@ export function Hero({ anime, slides = [anime] }: { anime: AnimeSummary; slides?
     <section className="relative isolate min-h-[min(660px,calc(100svh-4rem))] overflow-hidden border-b border-white/[0.06] sm:min-h-[min(700px,82svh)]" onMouseEnter={() => setPaused(true)} onMouseLeave={() => setPaused(false)}>
       <div className="absolute inset-0 -z-10 bg-black">
         {slides.map((slide, slideIndex) => (
-          <img key={slide.id} src={slide.banner || (slide.id === current.id ? enrichment?.metadata?.banner : undefined) || slide.poster} alt="" aria-hidden loading={slideIndex === index ? "eager" : "lazy"} fetchPriority={slideIndex === index ? "high" : "auto"} className={`absolute inset-0 h-full w-full object-cover object-[62%_center] transition-opacity duration-700 sm:object-center ${slideIndex === index ? "hero-backdrop opacity-70" : "opacity-0"}`} />
+          <img key={slide.id} src={slide.id === current.id ? displayBanner || displayPoster : slide.banner || slide.poster} alt="" aria-hidden loading={slideIndex === index ? "eager" : "lazy"} fetchPriority={slideIndex === index ? "high" : "auto"} className={`absolute inset-0 h-full w-full object-cover object-[62%_center] transition-opacity duration-700 sm:object-center ${slideIndex === index ? "hero-backdrop opacity-70" : "opacity-0"}`} />
         ))}
         <div className="absolute inset-0 bg-gradient-to-r from-black/95 via-black/70 to-black/15 sm:from-black/90 sm:via-black/55 sm:to-transparent" />
         <div className="absolute inset-0 bg-gradient-to-t from-background via-background/20 to-black/15" />
@@ -40,18 +53,18 @@ export function Hero({ anime, slides = [anime] }: { anime: AnimeSummary; slides?
       <div className="mx-auto flex min-h-[min(660px,calc(100svh-4rem))] max-w-7xl flex-col justify-end px-4 pb-10 pt-16 sm:min-h-[min(700px,82svh)] sm:px-6 sm:pb-16">
         <div key={current.id} className="hero-copy mb-7 max-w-2xl sm:mb-8">
           <p className="mb-2.5 text-[10px] font-bold uppercase tracking-[0.3em] text-primary sm:text-xs">Featured anime</p>
-          <h1 className="line-clamp-3 text-balance text-[2rem] font-black leading-[1.08] tracking-tight text-white sm:text-6xl">{current.title}</h1>
+          <h1 className="line-clamp-3 text-balance text-[2rem] font-black leading-[1.08] tracking-tight text-white sm:text-6xl">{displayTitle}</h1>
           <div className="mt-4 flex flex-wrap items-center gap-x-3 gap-y-2 text-xs text-white/75 sm:text-sm">
-            {current.score && <span className="inline-flex items-center gap-1 font-bold text-white"><Star className="size-4 fill-primary text-primary" />{current.score}</span>}
-            {current.year && <span>{current.year}</span>}
-            {current.type && <span>{current.type}</span>}
-            {current.episodeCount && <span>{current.episodeCount} episodes</span>}
+            {displayScore && <span className="inline-flex items-center gap-1 font-bold text-white"><Star className="size-4 fill-primary text-primary" />{displayScore}{displayRatingSource && <span className="ml-1 text-[10px] font-medium text-white/50">{displayRatingSource}</span>}</span>}
+            {displayYear && <span>{displayYear}</span>}
+            {displayType && <span>{displayType}</span>}
+            {displayEpisodes && <span>{displayEpisodes} episodes</span>}
           </div>
-          {current.genres.length > 0 && <p className="mt-3 text-sm text-white/70">{current.genres.slice(0, 4).join("  •  ")}</p>}
-          {current.description && <p className="mt-3 line-clamp-1 max-w-xl text-xs leading-relaxed text-white/65 sm:line-clamp-2 sm:text-sm">{current.description}</p>}
+          {displayGenres.length > 0 && <p className="mt-3 text-sm text-white/70">{displayGenres.filter(Boolean).slice(0, 4).join("  •  ")}</p>}
+          {displayDescription && <p className="mt-3 line-clamp-1 max-w-xl text-xs leading-relaxed text-white/65 sm:line-clamp-2 sm:text-sm">{displayDescription}</p>}
           <div className="mt-5 flex flex-wrap gap-2 sm:mt-7 sm:gap-3">
-            <Link href={`/anime/${current.id}`} className="inline-flex min-h-11 items-center gap-2 rounded-xl bg-primary px-4 py-2.5 text-sm font-bold text-primary-foreground shadow-lg shadow-primary/15 transition-[transform,filter] duration-200 hover:-translate-y-0.5 hover:brightness-110 active:scale-[0.98] motion-reduce:transform-none"><Play className="size-4 fill-current" />Watch now</Link>
-            <WatchlistButton anime={{ id: current.id, title: current.title, poster: current.poster }} className="min-h-11 rounded-xl border-white/20 bg-white/10 px-4 py-2.5 text-sm text-white backdrop-blur-sm hover:bg-white/15" />
+            <Link href={`/anime/${current.id}`} className="inline-flex min-h-11 items-center gap-2 rounded-xl bg-primary px-4 py-2.5 text-sm font-bold text-primary-foreground shadow-[0_4px_20px_rgba(229,9,20,0.35)] transition-[transform,filter] duration-200 hover:-translate-y-0.5 hover:brightness-110 active:scale-[0.98] motion-reduce:transform-none"><Play className="size-4 fill-current" />Watch now</Link>
+            <WatchlistButton anime={{ id: current.id, title: displayTitle, poster: displayPoster }} className="min-h-11 rounded-xl border-white/20 bg-white/10 px-4 py-2.5 text-sm text-white backdrop-blur-sm hover:bg-white/15" />
             <Link href={`/anime/${current.id}`} aria-label="View details" className="inline-flex min-h-11 items-center gap-2 rounded-xl border border-white/15 px-4 py-2.5 text-sm font-semibold text-white/80 transition-colors hover:bg-white/10 hover:text-white"><Info className="size-4" />Details</Link>
           </div>
         </div>

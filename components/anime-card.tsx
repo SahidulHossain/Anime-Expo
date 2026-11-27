@@ -34,7 +34,7 @@ export function AnimeCard({ anime, priority = false }: { anime: AnimeSummary; pr
       </div>
 
       <div className="p-2.5">
-        <h3 className="line-clamp-2 min-h-9 text-[13px] font-semibold leading-5 text-foreground transition-colors duration-200 group-hover:text-primary">
+        <h3 title={[anime.title, anime.titleJapanese, anime.titleRomaji, ...(anime.alternativeTitles ?? [])].filter(Boolean).join(" · ")} className="line-clamp-2 min-h-9 text-[13px] font-semibold leading-5 text-foreground transition-colors duration-200 group-hover:text-primary">
           {anime.title}
         </h3>
         <p className="mt-1 line-clamp-1 text-[11px] text-muted-foreground">

@@ -64,7 +64,7 @@ export function EpisodeList({ anime }: { anime: AnimeDetail }) {
           return (
             <Link
               key={ep.id}
-              href={`/watch/${anime.id}/${ep.id}?type=${defaultType}`}
+              href={`/watch/${anime.id}/${ep.id}?type=${isLast ? lastWatched.type : defaultType}`}
               className={cn(
                 "group flex items-center gap-3 rounded-lg border p-3 transition-colors",
                 isLast
@@ -77,7 +77,7 @@ export function EpisodeList({ anime }: { anime: AnimeDetail }) {
               </span>
               <span className="min-w-0 flex-1">
                 <span className="line-clamp-1 text-sm font-medium">{ep.title}</span>
-                {isLast && <span className="text-xs text-primary">Continue watching</span>}
+                {isLast && <><span className="text-xs text-primary">Continue watching{lastWatched.progress > 0 && lastWatched.progress <= 1 ? ` · ${Math.round(lastWatched.progress * 100)}%` : ""}</span>{lastWatched.progress > 0 && lastWatched.progress <= 1 && <span className="mt-1 block h-1 overflow-hidden rounded-full bg-white/10"><span className="block h-full rounded-full bg-primary" style={{ width: `${Math.round(lastWatched.progress * 100)}%` }} /></span>}</>}
               </span>
               <Play className="size-4 shrink-0 text-muted-foreground group-hover:text-primary" />
             </Link>

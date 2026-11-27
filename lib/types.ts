@@ -26,6 +26,17 @@ export interface AnimeSummary {
   ratingSource?: string
   popularityRank?: number
   ratingRank?: number
+  season?: string
+  seasonYear?: number
+  countryOfOrigin?: string
+  sourceType?: string
+  aniListAverageScore?: number
+  aniListMeanScore?: number
+  aniListPopularity?: number
+  aniListFavourites?: number
+  aniListTrending?: number
+  aniListUrl?: string
+  metadataSources?: Record<string, "AnimExpo" | "AniList" | "Kitsu">
   isSub: number
   isDub: number
   genres: string[]

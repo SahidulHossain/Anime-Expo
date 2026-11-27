@@ -56,6 +56,8 @@ function mapAnime(raw: RawAnime): AnimeSummary {
     rating: raw.rating || undefined,
     type: type || undefined,
     duration: raw.duration || undefined,
+    titleJapanese: raw.native || undefined,
+    alternativeTitles: raw.alternative ? [raw.alternative] : undefined,
     malId: raw.mal_id ? String(raw.mal_id) : undefined,
     aniListId: raw.ani_id ? String(raw.ani_id) : undefined,
     isSub: raw.is_sub ?? 0,
