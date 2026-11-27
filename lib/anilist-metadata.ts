@@ -47,8 +47,8 @@ type RawMedia = {
   studios?: { edges?: Array<{ isMain?: boolean | null; node?: { name?: string | null; isAnimationStudio?: boolean | null } | null } | null> | null } | null
   staff?: { edges?: Array<{ role?: string | null; node?: { name?: { full?: string | null } | null; siteUrl?: string | null } | null } | null> | null } | null
   characters?: { edges?: Array<{ role?: string | null; node?: { name?: { full?: string | null } | null; image?: { large?: string | null; medium?: string | null } | null; siteUrl?: string | null } | null; voiceActors?: Array<{ name?: { full?: string | null } | null; languageV2?: string | null; image?: { large?: string | null; medium?: string | null } | null; siteUrl?: string | null } | null> | null } | null> | null } | null
-  relations?: { edges?: Array<{ relationType?: string | null; node?: { id?: number | null; type?: string | null; format?: string | null; isAdult?: boolean | null; title?: RawTitle | null; coverImage?: RawImage | null; siteUrl?: string | null } | null } | null> | null } | null
-  recommendations?: { nodes?: Array<{ rating?: number | null; mediaRecommendation?: { id?: number | null; type?: string | null; format?: string | null; isAdult?: boolean | null; title?: RawTitle | null; coverImage?: RawImage | null; siteUrl?: string | null } | null } | null> | null } | null
+  relations?: { edges?: Array<{ relationType?: string | null; node?: { id?: number | null; type?: string | null; format?: string | null; seasonYear?: number | null; averageScore?: number | null; isAdult?: boolean | null; title?: RawTitle | null; coverImage?: RawImage | null; siteUrl?: string | null } | null } | null> | null } | null
+  recommendations?: { nodes?: Array<{ rating?: number | null; mediaRecommendation?: { id?: number | null; type?: string | null; format?: string | null; seasonYear?: number | null; averageScore?: number | null; isAdult?: boolean | null; title?: RawTitle | null; coverImage?: RawImage | null; siteUrl?: string | null } | null } | null> | null } | null
   rankings?: Array<{ rank?: number | null; type?: string | null; format?: string | null; context?: string | null; allTime?: boolean | null; year?: number | null; season?: string | null } | null> | null
   stats?: { scoreDistribution?: Array<{ score?: number | null; amount?: number | null } | null> | null } | null
   nextAiringEpisode?: { episode?: number | null; airingAt?: number | null } | null
@@ -88,7 +88,7 @@ const DETAILS_QUERY = `query AniListAnimeDetails($id: Int!) {
     ${CORE_FIELDS}
     tags { name description category rank isGeneralSpoiler isMediaSpoiler isAdult }
     studios { edges { isMain node { name isAnimationStudio } } }
-    staff(perPage: 10) { edges { role node { name { full } siteUrl } } }
+    staff(perPage: 30) { edges { role node { name { full } siteUrl } } }
     characters(perPage: 12) {
       edges {
         role
@@ -96,8 +96,8 @@ const DETAILS_QUERY = `query AniListAnimeDetails($id: Int!) {
         voiceActors { name { full } languageV2 image { large medium } siteUrl }
       }
     }
-    relations { edges { relationType node { id type format isAdult title { english romaji native } coverImage { extraLarge large medium } siteUrl } } }
-    recommendations(perPage: 15) { nodes { rating mediaRecommendation { id type format isAdult title { english romaji native } coverImage { extraLarge large medium } siteUrl } } }
+    relations { edges { relationType node { id type format seasonYear averageScore isAdult title { english romaji native } coverImage { extraLarge large medium } siteUrl } } }
+    recommendations(perPage: 15) { nodes { rating mediaRecommendation { id type format seasonYear averageScore isAdult title { english romaji native } coverImage { extraLarge large medium } siteUrl } } }
     rankings { rank type format context allTime year season }
     stats { scoreDistribution { score amount } }
     nextAiringEpisode { episode airingAt }
@@ -351,7 +351,7 @@ function mapDetails(media: RawMedia): AniListDetails {
     const title = clean(node?.title?.english) ?? clean(node?.title?.romaji) ?? clean(node?.title?.native)
     const id = positiveInteger(node?.id)
     if (!node || node.type !== "ANIME" || node.isAdult !== false || !title || !id) return []
-    return [{ id, title, relation: clean(edge?.relationType) ?? "RELATED", format: clean(node.format)?.replaceAll("_", " "), image: image(node.coverImage), url: safeSiteUrl(node.siteUrl, `https://anilist.co/anime/${id}`) }]
+    return [{ id, title, relation: clean(edge?.relationType) ?? "RELATED", format: clean(node.format)?.replaceAll("_", " "), year: positiveInteger(node.seasonYear), score: positiveInteger(node.averageScore), image: image(node.coverImage), url: safeSiteUrl(node.siteUrl, `https://anilist.co/anime/${id}`) }]
   })
   const recommendations: AniListRecommendation[] = (media.recommendations?.nodes ?? []).flatMap((entry): AniListRecommendation[] => {
     const node = entry?.mediaRecommendation
@@ -359,7 +359,7 @@ function mapDetails(media: RawMedia): AniListDetails {
     const id = positiveInteger(node?.id)
     const rating = typeof entry?.rating === "number" && Number.isFinite(entry.rating) ? entry.rating : 0
     if (!node || node.type !== "ANIME" || node.isAdult !== false || !title || !id || rating <= 0) return []
-    return [{ id, title, rating, format: clean(node.format)?.replaceAll("_", " "), image: image(node.coverImage), url: safeSiteUrl(node.siteUrl, `https://anilist.co/anime/${id}`) }]
+    return [{ id, title, rating, year: positiveInteger(node.seasonYear), score: positiveInteger(node.averageScore), format: clean(node.format)?.replaceAll("_", " "), image: image(node.coverImage), url: safeSiteUrl(node.siteUrl, `https://anilist.co/anime/${id}`) }]
   }).sort((a, b) => b.rating - a.rating).slice(0, 12)
   const rankings: AniListRanking[] = (media.rankings ?? []).flatMap((item): AniListRanking[] => {
     const rank = positiveCount(item?.rank)
@@ -380,16 +380,19 @@ function mapDetails(media: RawMedia): AniListDetails {
   const trailerSite = clean(media.trailer?.site)?.toLowerCase()
   const trailerUrl = trailerSite === "youtube" && trailerId && /^[A-Za-z0-9_-]{11}$/.test(trailerId) ? `https://www.youtube.com/watch?v=${encodeURIComponent(trailerId)}` : undefined
   const trailerThumbnail = trailerUrl ? validUrl(media.trailer?.thumbnail) : undefined
-  const officialLinks = (media.externalLinks ?? []).flatMap((link) => {
+  const externalLinks = (media.externalLinks ?? []).flatMap((link) => {
     if (!link || link.isDisabled) return []
     const site = clean(link.site)
     const url = validUrl(link.url)
-    if (!site || !url || !/official|website/i.test(`${link.type ?? ""} ${site}`)) return []
-    return [{ site, url }]
-  }).slice(0, 5)
+    if (!site || !url) return []
+    return [{ site, url, type: clean(link.type) }]
+  }).filter((link, index, links) => links.findIndex((candidate) => candidate.site === link.site && candidate.url === link.url) === index).slice(0, 16)
+  const officialLinks = externalLinks.filter((link) => /official|website/i.test(`${link.type ?? ""} ${link.site}`)).slice(0, 5)
 
   return {
     aniListUrl,
+    airingStatus: clean(media.status)?.toUpperCase(),
+    titles: { english: clean(media.title?.english), romaji: clean(media.title?.romaji), native: clean(media.title?.native) },
     tags,
     studios,
     staff,
@@ -404,6 +407,7 @@ function mapDetails(media: RawMedia): AniListDetails {
     trailerUrl,
     trailerThumbnail,
     officialLinks,
+    externalLinks,
   }
 }
 
@@ -444,7 +448,15 @@ function cacheKey(lookup: AniListLookup, details: boolean) {
   return `${details ? "detail" : "summary"}:${lookup.aniListId || ""}:${lookup.malId || ""}:${lookup.id}`
 }
 
-export async function getAniListEnrichment(anime: AniListLookup, includeDetails = false): Promise<AniListPayload | null> {
+async function loadFreshDetails(lookup: AniListLookup): Promise<AniListPayload> {
+  const matched = await findMedia(lookup)
+  if (!matched || matched.isAdult !== false) throw new Error("AniList match unavailable")
+  const media = await queryMedia(DETAILS_QUERY, { id: matched.id })
+  if (!media || media.id !== matched.id || media.isAdult !== false) throw new Error("AniList details unavailable")
+  return { metadata: mapMetadata(media), details: mapDetails(media) }
+}
+
+export async function getAniListEnrichment(anime: AniListLookup, includeDetails = false, forceRefresh = false): Promise<AniListPayload | null> {
   const lookup: AniListLookup = {
     id: anime.id,
     title: anime.title,
@@ -457,17 +469,19 @@ export async function getAniListEnrichment(anime: AniListLookup, includeDetails 
     alternativeTitles: anime.alternativeTitles,
   }
   const key = cacheKey(lookup, includeDetails)
+  const requestKey = forceRefresh && includeDetails ? `refresh:${key}` : key
   const cached = resultCache.get(key)
-  if (cached && cached.expiresAt > Date.now()) return cached.value
+  if (!forceRefresh && cached && cached.expiresAt > Date.now()) return cached.value
   if (Date.now() < cooldownUntil) return null
-  const active = inFlight.get(key)
+  const active = inFlight.get(requestKey)
   if (active) return active
 
   const promise = (async () => {
     try {
-      const result = includeDetails ? await loadCachedDetails(lookup) : await loadCachedSummary(lookup)
+      const result = forceRefresh && includeDetails ? await loadFreshDetails(lookup) : includeDetails ? await loadCachedDetails(lookup) : await loadCachedSummary(lookup)
       consecutiveFailures = 0
-      storeResult(key, { value: result, expiresAt: Date.now() + (includeDetails ? DETAILS_TTL_SECONDS : SUMMARY_TTL_SECONDS) * 1000 })
+      const cacheSeconds = forceRefresh ? 60 : includeDetails ? DETAILS_TTL_SECONDS : SUMMARY_TTL_SECONDS
+      storeResult(key, { value: result, expiresAt: Date.now() + cacheSeconds * 1000 })
       return result
     } catch {
       consecutiveFailures += 1
@@ -475,9 +489,9 @@ export async function getAniListEnrichment(anime: AniListLookup, includeDetails 
       storeResult(key, { value: null, expiresAt: Date.now() + FAILURE_TTL_MS })
       return null
     } finally {
-      inFlight.delete(key)
+      inFlight.delete(requestKey)
     }
   })()
-  inFlight.set(key, promise)
+  inFlight.set(requestKey, promise)
   return promise
 }

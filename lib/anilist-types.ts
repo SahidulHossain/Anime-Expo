@@ -25,12 +25,16 @@ export type AniListRelatedMedia = {
   relation: string
   format?: string
   image?: string
+  year?: number
+  score?: number
   url: string
 }
 export type AniListRecommendation = {
   id: number
   title: string
   rating: number
+  year?: number
+  score?: number
   format?: string
   image?: string
   url: string
@@ -63,6 +67,8 @@ export type AniListMetadata = Partial<AnimeSummary> & {
 
 export type AniListDetails = {
   aniListUrl: string
+  airingStatus?: string
+  titles?: { english?: string; romaji?: string; native?: string }
   tags: AniListTag[]
   studios: AniListStudio[]
   staff: AniListStaff[]
@@ -77,6 +83,7 @@ export type AniListDetails = {
   trailerUrl?: string
   trailerThumbnail?: string
   officialLinks: Array<{ site: string; url: string }>
+  externalLinks?: Array<{ site: string; url: string; type?: string }>
 }
 
 export type AnimeMetadataResponse = {

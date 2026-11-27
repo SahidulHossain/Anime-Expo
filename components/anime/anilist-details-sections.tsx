@@ -1,5 +1,7 @@
+import Link from "next/link"
 import { Play } from "lucide-react"
 import type { AniListCharacter, AniListDetails, AniListRecommendation, AniListRelatedMedia, AniListTag } from "@/lib/anilist-types"
+import type { AnimeSummary } from "@/lib/types"
 
 function imageIsValid(value?: string) {
   if (!value) return false
@@ -51,25 +53,32 @@ export function AniListCharacters({ characters }: { characters: AniListCharacter
   </div>
 }
 
-function AniListMediaGrid({ items, kind }: { items: AniListRelatedMedia[] | AniListRecommendation[]; kind: "franchise" | "recommendation" }) {
+function AniListMediaGrid({ items, kind, catalog = [] }: { items: AniListRelatedMedia[] | AniListRecommendation[]; kind: "franchise" | "recommendation"; catalog?: AnimeSummary[] }) {
   if (!items.length) return null
   return <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
-    {items.map((item) => <a key={item.id} href={item.url} target="_blank" rel="noreferrer" className="group overflow-hidden rounded-xl border border-white/[0.08] bg-white/[0.025] transition-colors hover:border-primary/40">
-      {imageIsValid(item.image) ? <img src={item.image} alt={item.title} loading="lazy" decoding="async" className="aspect-[4/3] w-full object-cover transition-transform duration-300 group-hover:scale-[1.03]" /> : null}
-      <div className="p-3">
-        <p className="line-clamp-2 text-sm font-semibold text-white group-hover:text-primary">{item.title}</p>
-        <p className="mt-1 text-xs text-muted-foreground">{kind === "franchise" ? displayRelation((item as AniListRelatedMedia).relation) : `AniList rating ${"rating" in item ? item.rating : 0}`}{item.format ? ` · ${item.format}` : ""}</p>
-      </div>
-    </a>)}
+    {items.map((item) => {
+      const internal = catalog.find((anime) => String(anime.aniListId ?? "") === String(item.id) || [anime.title, ...(anime.alternativeTitles ?? [])].some((title) => normalizeTitle(title) === normalizeTitle(item.title)))
+      const metadata = <>
+        {imageIsValid(item.image) ? <img src={item.image} alt="" loading="lazy" decoding="async" className="aspect-[2/3] w-full object-cover transition-transform duration-300 group-hover:scale-[1.03]" /> : <div className="aspect-[2/3] bg-white/[0.04]" aria-hidden />}
+        <div className="p-3">
+          <p className="line-clamp-2 text-sm font-semibold text-white group-hover:text-primary">{item.title}</p>
+          <p className="mt-1 text-xs text-muted-foreground">{kind === "franchise" ? displayRelation((item as AniListRelatedMedia).relation) : "Recommendation"}{item.format ? ` · ${item.format}` : ""}{item.year ? ` · ${item.year}` : ""}{item.score && item.score <= 100 ? ` · AniList ${(item.score / 10).toFixed(1)}` : ""}</p>
+        </div>
+      </>
+      const className = "group overflow-hidden rounded-xl border border-white/[0.08] bg-white/[0.025] transition-colors hover:border-primary/40"
+      return internal ? <Link key={item.id} href={`/anime/${internal.id}`} className={className}>{metadata}</Link> : <a key={item.id} href={item.url} target="_blank" rel="noreferrer" className={className}>{metadata}</a>
+    })}
   </div>
 }
 
-export function AniListFranchise({ relations }: { relations: AniListRelatedMedia[] }) {
-  return <AniListMediaGrid items={relations} kind="franchise" />
+function normalizeTitle(value: string) { return value.normalize("NFKD").replace(/[\u0300-\u036f]/g, "").toLowerCase().replace(/&/g, "and").replace(/[^\p{L}\p{N}]+/gu, "") }
+
+export function AniListFranchise({ relations, catalog = [] }: { relations: AniListRelatedMedia[]; catalog?: AnimeSummary[] }) {
+  return <AniListMediaGrid items={relations} kind="franchise" catalog={catalog} />
 }
 
-export function AniListRecommendations({ recommendations }: { recommendations: AniListRecommendation[] }) {
-  return <AniListMediaGrid items={recommendations} kind="recommendation" />
+export function AniListRecommendations({ recommendations, catalog = [] }: { recommendations: AniListRecommendation[]; catalog?: AnimeSummary[] }) {
+  return <AniListMediaGrid items={recommendations} kind="recommendation" catalog={catalog} />
 }
 
 export function AniListTrailer({ details, title }: { details: AniListDetails; title: string }) {
@@ -79,12 +88,4 @@ export function AniListTrailer({ details, title }: { details: AniListDetails; ti
     {imageIsValid(trailer.thumbnail) ? <img src={trailer.thumbnail} alt={`${title} trailer thumbnail`} loading="lazy" decoding="async" className="aspect-video w-full object-cover transition-transform duration-300 group-hover:scale-[1.02]" /> : <div className="flex aspect-video items-center justify-center bg-white/[0.04]"><span className="sr-only">Trailer preview unavailable</span></div>}
     <span className="absolute inset-0 flex items-center justify-center bg-black/20"><span className="inline-flex items-center gap-2 rounded-full bg-primary px-4 py-2 text-xs font-semibold text-white shadow-lg"><Play className="size-4 fill-current" />Watch trailer</span></span>
   </a>
-}
-
-export function nextAiringLabel(details: AniListDetails): { text: string; dateTime: string } | undefined {
-  const next = details.nextAiringEpisode
-  if (!next || !Number.isSafeInteger(next.airingAt) || next.airingAt <= Math.floor(Date.now() / 1000)) return undefined
-  const date = new Date(next.airingAt * 1000)
-  if (Number.isNaN(date.getTime())) return undefined
-  return { text: `Episode ${next.episode} · ${date.toISOString().replace("T", " ").slice(0, 16)} UTC`, dateTime: date.toISOString() }
 }
