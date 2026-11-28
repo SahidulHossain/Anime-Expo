@@ -82,6 +82,13 @@
   --sidebar-accent-foreground: oklch(0.97 0 0);
   --sidebar-border: oklch(1 0 0 / 10%);
   --sidebar-ring: oklch(0.58 0.23 27);
+  --site-header-height: 3.5rem;
+}
+
+@media (min-width: 640px) {
+  :root {
+    --site-header-height: 3.75rem;
+  }
 }
 
 .dark {
@@ -99,11 +106,11 @@
 
 @keyframes hero-backdrop-drift {
   from { transform: scale(1); }
-  to { transform: scale(1.045); }
+  to { transform: scale(1.018); }
 }
 
 .hero-backdrop {
-  animation: hero-backdrop-drift 22s ease-in-out infinite alternate;
+  animation: hero-backdrop-drift 32s ease-in-out infinite alternate;
 }
 
 @keyframes details-panel-enter {

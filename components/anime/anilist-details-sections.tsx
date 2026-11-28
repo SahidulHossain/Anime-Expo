@@ -1,4 +1,7 @@
+"use client"
+
 import Link from "next/link"
+import { useState } from "react"
 import { Play } from "lucide-react"
 import type { AniListCharacter, AniListDetails, AniListRecommendation, AniListRelatedMedia, AniListTag } from "@/lib/anilist-types"
 import type { AnimeSummary } from "@/lib/types"
@@ -40,17 +43,22 @@ export function AniListTags({ tags }: { tags: AniListTag[] }) {
 }
 
 export function AniListCharacters({ characters }: { characters: AniListCharacter[] }) {
+  const [expanded, setExpanded] = useState(false)
   if (!characters.length) return null
-  return <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
-    {characters.map((character) => <article key={`${character.name}-${character.role}`} className="overflow-hidden rounded-xl border border-white/[0.08] bg-white/[0.025]">
-      {imageIsValid(character.image) ? <img src={character.image} alt={character.name} loading="lazy" decoding="async" className="aspect-[4/3] w-full object-cover object-top" /> : null}
-      <div className="p-3">
-        <h3 className="line-clamp-2 text-sm font-semibold text-white">{character.name}</h3>
-        <p className="mt-1 text-xs text-muted-foreground">{character.role} character</p>
-        {character.voiceActors.length > 0 && <ul className="mt-2 space-y-1 border-t border-white/[0.08] pt-2">{character.voiceActors.map((actor) => <li key={`${actor.name}-${actor.language}`} className="text-xs"><span className="text-white/80">{actor.name}</span><span className="ml-1 text-muted-foreground">· {actor.language === "Unknown" ? "Voice actor" : `${actor.language} voice`}</span></li>)}</ul>}
-      </div>
-    </article>)}
-  </div>
+  const visibleCharacters = expanded ? characters : characters.slice(0, 8)
+  return <>
+    <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
+      {visibleCharacters.map((character) => <article key={`${character.name}-${character.role}`} className="overflow-hidden rounded-xl border border-white/[0.08] bg-white/[0.025]">
+        <div className="aspect-[4/3] bg-white/[0.035]">{imageIsValid(character.image) ? <img src={character.image} alt={character.name} loading="lazy" decoding="async" className="h-full w-full object-cover object-top" /> : null}</div>
+        <div className="p-3">
+          <h3 className="line-clamp-2 text-sm font-semibold text-white">{character.name}</h3>
+          <p className="mt-1 text-xs text-muted-foreground">{character.role} character</p>
+          {character.voiceActors.length > 0 && <ul className="mt-2 flex flex-col gap-1 border-t border-white/[0.08] pt-2">{character.voiceActors.map((actor) => <li key={`${actor.name}-${actor.language}`} className="break-words text-xs"><span className="text-white/80">{actor.name}</span><span className="ml-1 text-muted-foreground">· {actor.language === "Unknown" ? "Voice actor" : `${actor.language} voice`}</span></li>)}</ul>}
+        </div>
+      </article>)}
+    </div>
+    {characters.length > 8 && <button type="button" aria-expanded={expanded} onClick={() => setExpanded(!expanded)} className="mt-4 text-xs font-semibold text-primary">{expanded ? "Show fewer characters" : `Show all ${characters.length} characters`}</button>}
+  </>
 }
 
 function AniListMediaGrid({ items, kind, catalog = [] }: { items: AniListRelatedMedia[] | AniListRecommendation[]; kind: "franchise" | "recommendation"; catalog?: AnimeSummary[] }) {

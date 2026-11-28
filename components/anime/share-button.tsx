@@ -47,7 +47,7 @@ export function ShareButton({ animeId, title }: { animeId: number; title: string
   }
 
   return <div className="relative">
-    <button type="button" aria-label="Share anime" onClick={share} className="rounded-full border border-white/10 bg-black/30 p-2.5 text-white hover:border-primary"><Share2 className="size-5" /></button>
+    <button type="button" aria-label="Share anime" onClick={share} className="inline-flex size-11 items-center justify-center rounded-full border border-white/10 bg-black/30 text-white transition-colors hover:border-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"><Share2 className="size-5" /></button>
     {showCopy && <div className="absolute right-0 top-12 z-20 w-64 rounded-xl border border-border bg-card p-3 shadow-xl"><p className="text-xs text-muted-foreground">Copy this anime link</p><button type="button" onClick={copyLink} className="mt-2 flex w-full items-center justify-center gap-2 rounded-lg bg-primary px-3 py-2 text-sm font-semibold text-primary-foreground"><Copy className="size-4" />Copy link</button>{status === "error" && <p className="mt-2 break-all text-xs text-destructive">Copy failed. Select the URL manually: {url}</p>}</div>}
     {status === "copied" && <div role="status" className="absolute right-0 top-12 z-20 flex items-center gap-2 whitespace-nowrap rounded-lg border border-primary/40 bg-card px-3 py-2 text-xs font-semibold text-primary"><Check className="size-4" />Anime link copied!</div>}
   </div>

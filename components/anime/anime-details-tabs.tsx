@@ -34,7 +34,7 @@ export function AnimeDetailsTabs({ anime, related, details, onRefreshAiring }: {
     <section className="mt-5 pb-12 sm:mt-7">
       <div className="flex justify-center overflow-x-auto pb-1" role="tablist" aria-label="Anime details">
         <div className="inline-flex min-w-max items-center gap-1 rounded-full border border-white/[0.08] bg-black/35 p-1 backdrop-blur-sm">
-          {tabs.map((tab) => <button key={tab} id={`${tab.toLowerCase()}-tab`} type="button" role="tab" aria-controls={`${tab.toLowerCase()}-panel`} aria-selected={active === tab} onClick={() => setActive(tab)} className={cn("min-h-9 rounded-full px-4 py-2 text-xs font-semibold transition-colors duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-black sm:px-5 sm:text-sm", active === tab ? "bg-white text-zinc-950" : "text-white/55 hover:text-white")}>{tab}</button>)}
+          {tabs.map((tab) => <button key={tab} id={`${tab.toLowerCase()}-tab`} type="button" role="tab" aria-controls={`${tab.toLowerCase()}-panel`} aria-selected={active === tab} onClick={() => setActive(tab)} className={cn("min-h-11 rounded-full px-4 py-2 text-xs font-semibold transition-colors duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-black sm:px-5 sm:text-sm", active === tab ? "bg-white text-zinc-950" : "text-white/55 hover:text-white")}>{tab}</button>)}
         </div>
       </div>
 
@@ -53,7 +53,7 @@ export function AnimeDetailsTabs({ anime, related, details, onRefreshAiring }: {
             <p className={cn("max-w-3xl whitespace-pre-line text-[13px] leading-6 text-white/65 sm:text-sm sm:leading-7", !expanded && "line-clamp-4")}>{description}</p>
             {description.length > 320 && <button type="button" aria-expanded={expanded} onClick={() => setExpanded(!expanded)} className="mt-2 text-sm font-semibold text-primary hover:text-red-300">{expanded ? "Show less" : "Show more"}</button>}
           </section>}
-          {details && details.trailer && <section className="space-y-3"><h2 className="text-base font-bold sm:text-lg">Trailer</h2><AniListTrailer details={details} title={anime.title} /></section>}
+          {details && hasValidTrailer(details) && <section className="space-y-3"><h2 className="text-base font-bold sm:text-lg">Trailer</h2><AniListTrailer details={details} title={anime.title} /></section>}
         </div>}
         {active === "Episodes" && <EpisodeList anime={anime} />}
         {active === "Info" && <AnimeInfo anime={anime} details={details} />}
@@ -70,9 +70,12 @@ export function AnimeDetailsTabs({ anime, related, details, onRefreshAiring }: {
 
 function AnimeInfo({ anime, details }: { anime: AnimeDetail; details: AniListDetails | null }) {
   const [staffExpanded, setStaffExpanded] = useState(false)
+  const [titlesExpanded, setTitlesExpanded] = useState(false)
+  const [tagsExpanded, setTagsExpanded] = useState(false)
   const animeTitle = anime.title.trim()
-  const titles = uniqueStrings([details?.titles?.english, details?.titles?.romaji, details?.titles?.native, anime.titleRomaji, anime.titleJapanese, ...(anime.alternativeTitles ?? [])]).filter((title) => normalizeTitle(title) !== normalizeTitle(animeTitle))
-  const alternativeTitles = titles.slice(0, 12)
+  const canonicalTitles = new Set([animeTitle, details?.titles?.english, details?.titles?.romaji, details?.titles?.native, anime.titleRomaji, anime.titleJapanese].filter((title): title is string => Boolean(title)).map(normalizeTitle))
+  const titles = uniqueStrings(anime.alternativeTitles ?? []).filter((title) => !canonicalTitles.has(normalizeTitle(title)))
+  const alternativeTitles = titlesExpanded ? titles : titles.slice(0, 8)
   const studios = uniqueStudios(details?.studios ?? [])
   const staff = uniqueStaff(details?.staff ?? [])
   const topScores = details?.scoreDistribution.slice().sort((a, b) => b.amount - a.amount) ?? []
@@ -83,14 +86,14 @@ function AnimeInfo({ anime, details }: { anime: AnimeDetail; details: AniListDet
   const categories = uniqueStrings(anime.categories ?? []).filter((category) => !anime.genres.some((genre) => normalizeTitle(genre) === normalizeTitle(category)))
   const country = anime.countryOfOrigin === "JP" ? "Japan" : anime.countryOfOrigin === "US" ? "United States" : anime.countryOfOrigin === "KR" ? "South Korea" : anime.countryOfOrigin === "CN" ? "China" : anime.countryOfOrigin
   const ratings = [
-    validScore(anime.score) ? { label: anime.metadataSources?.score === "Kitsu" ? "Kitsu rating" : validText(anime.ratingSource) ? anime.ratingSource : "AnimExpo rating", value: `${anime.score} / 10` } : undefined,
+    validScore(anime.score) && !/anilist/i.test(anime.ratingSource ?? "") ? { label: anime.metadataSources?.score === "Kitsu" ? "Kitsu rating" : "AnimExpo rating", value: `${anime.score} / 10` } : undefined,
     validPercentScore(anime.aniListAverageScore) ? { label: "AniList average score", value: `${(anime.aniListAverageScore! / 10).toFixed(1)} / 10` } : undefined,
     validPercentScore(anime.aniListMeanScore) ? { label: "AniList mean score", value: `${(anime.aniListMeanScore! / 10).toFixed(1)} / 10` } : undefined,
   ].filter((item): item is { label: string; value: string } => Boolean(item))
   const airing = details?.airingStatus ? humanize(details.airingStatus) : validText(anime.status) ? anime.status : undefined
   const staffVisible = staffExpanded ? staff : staff.slice(0, 10)
 
-  return <div className="space-y-8">
+  return <div className="flex flex-col gap-4 sm:gap-5">
     <InfoSection title="General information">
       <InfoGrid rows={[
         ["English title", details?.titles?.english ?? anime.title],
@@ -102,29 +105,38 @@ function AnimeInfo({ anime, details }: { anime: AnimeDetail; details: AniListDet
         ["End date", formatDate(anime.endDate)], ["Episodes", positiveCount(anime.episodeCount)],
         ["Episode duration", anime.duration], ["Age rating", anime.ageRating],
       ]} />
-      {alternativeTitles.length > 0 && <div className="mt-4"><h3 className="text-xs font-semibold text-white/55">Alternative titles</h3><div className="mt-2 flex flex-wrap gap-2">{alternativeTitles.map((title) => <span key={title} className="rounded-full border border-white/10 px-3 py-1.5 text-xs text-white/75">{title}</span>)}</div></div>}
     </InfoSection>
 
-    {(ratings.length || hasPositiveMetrics(anime) || rankings.length || topScores.length) ? <InfoSection title="Ratings and popularity">
-      {ratings.length > 0 && <dl className="grid gap-x-6 gap-y-3 sm:grid-cols-2 lg:grid-cols-3">{ratings.map((rating) => <div key={rating.label} className="flex items-center justify-between gap-3 border-b border-white/[0.06] py-2"><dt className="text-xs text-white/55">{rating.label}</dt><dd className="inline-flex items-center gap-1.5 text-sm font-semibold text-white"><Star className="size-3.5 fill-primary text-primary" />{rating.value}</dd></div>)}</dl>}
-      <div className="mt-3 flex flex-wrap gap-x-6 gap-y-2 text-xs text-white/60">{positiveMetric(anime.aniListPopularity) && <span>Members <b className="ml-1 text-white">{formatCount(anime.aniListPopularity!)}</b></span>}{positiveMetric(anime.aniListFavourites) && <span>Favourites <b className="ml-1 text-white">{formatCount(anime.aniListFavourites!)}</b></span>}{positiveMetric(anime.aniListTrending) && <span>Trending <b className="ml-1 text-white">{formatCount(anime.aniListTrending!)}</b></span>}{positiveMetric(anime.popularityRank) && <span>Kitsu popularity <b className="ml-1 text-white">#{anime.popularityRank}</b></span>}{positiveMetric(anime.ratingRank) && <span>Kitsu rank <b className="ml-1 text-white">#{anime.ratingRank}</b></span>}</div>
-      {rankings.length > 0 && <ul className="mt-3 flex flex-wrap gap-2">{rankings.map((rank) => <li key={`${rank.type}-${rank.context}-${rank.rank}`} className="rounded-lg border border-white/[0.08] px-3 py-2 text-xs text-white/65"><span className="font-semibold text-primary">#{rank.rank}</span> {humanize(rank.type)} {rank.format ? `· ${humanize(rank.format)}` : ""} {rank.context ? `· ${rank.context}` : ""}</li>)}</ul>}
-      {topScores.length > 0 && <div className="mt-4"><h3 className="text-xs font-semibold text-white/65">AniList score distribution</h3><div className="mt-2 flex flex-wrap gap-x-4 gap-y-1">{topScores.map((score) => <span key={score.score} className="text-xs text-white/50">{(score.score / 10).toFixed(1)} / 10 · {formatCount(score.amount)} votes</span>)}</div></div>}
-    </InfoSection> : null}
+    {titles.length > 0 && <InfoSection title="Alternative titles">
+      <div className="flex flex-wrap gap-2">{alternativeTitles.map((title) => <span key={title} className="max-w-full break-words rounded-full border border-white/10 px-3 py-1.5 text-xs text-white/75">{title}</span>)}</div>
+      {titles.length > 8 && <button type="button" aria-expanded={titlesExpanded} onClick={() => setTitlesExpanded(!titlesExpanded)} className="mt-3 text-xs font-semibold text-primary">{titlesExpanded ? "Show less" : `Show all ${titles.length} titles`}</button>}
+    </InfoSection>}
 
-    {(anime.genres.length > 0 || themes.length > 0 || tags.length > 0 || categories.length > 0) && <InfoSection title="Genres, themes and categories">
+    {(anime.genres.length > 0 || themes.length > 0 || tags.length > 0 || categories.length > 0) && <InfoSection title="Genres, themes, tags and categories">
       <ChipGroup title="Genres" values={uniqueStrings(anime.genres)} primary />
       <ChipGroup title="Themes" values={themes} />
-      <ChipGroup title="AniList tags" values={tags} />
+      <ChipGroup title="AniList tags" values={tagsExpanded ? tags : tags.slice(0, 12)} />
+      {tags.length > 12 && <button type="button" aria-expanded={tagsExpanded} onClick={() => setTagsExpanded(!tagsExpanded)} className="mt-3 text-xs font-semibold text-primary">{tagsExpanded ? "Show fewer tags" : `Show all ${tags.length} tags`}</button>}
       <ChipGroup title="Categories" values={categories} />
     </InfoSection>}
 
-    {(studios.length > 0 || staff.length > 0) && <InfoSection title="Production and staff">
-      {studios.length > 0 && <div><h3 className="text-xs font-semibold text-white/55">Studios</h3><div className="mt-2 flex flex-wrap gap-2">{studios.map((studio) => <span key={studio.name} className={cn("rounded-full border px-3 py-1.5 text-xs", studio.isMain ? "border-primary/35 bg-primary/10 text-white" : "border-white/10 text-white/65")}>{studio.name}{studio.isMain && <span className="ml-1.5 text-primary">Main studio</span>}</span>)}</div></div>}
-      {staff.length > 0 && <div className="mt-5"><h3 className="mb-2 text-xs font-semibold text-white/55">Staff and creators</h3><ul className="grid gap-x-6 sm:grid-cols-2">{staffVisible.map((member) => <li key={`${member.name}-${member.role}`} className="flex min-w-0 items-baseline justify-between gap-3 border-b border-white/[0.06] py-2 text-xs"><span className="min-w-0 break-words font-medium text-white/85">{member.url ? <a href={member.url} target="_blank" rel="noreferrer" className="hover:text-primary">{member.name}</a> : member.name}</span><span className="shrink-0 text-right text-white/45">{member.role}</span></li>)}</ul>{staff.length > 10 && <button type="button" aria-expanded={staffExpanded} onClick={() => setStaffExpanded(!staffExpanded)} className="mt-3 text-xs font-semibold text-primary">{staffExpanded ? "Show less" : `Show all ${staff.length} credits`}</button>}</div>}
+    {studios.length > 0 && <InfoSection title="Production and studios">
+      <div className="flex flex-wrap gap-2">{studios.map((studio) => <span key={studio.name} className={cn("rounded-full border px-3 py-1.5 text-xs", studio.isMain ? "border-primary/35 bg-primary/10 text-white" : "border-white/10 text-white/65")}>{studio.name}{studio.isMain && <span className="ml-1.5 text-primary">Main studio</span>}</span>)}</div>
+    </InfoSection>}
+
+    {staff.length > 0 && <InfoSection title="Staff and creators">
+      <ul className="grid gap-x-6 sm:grid-cols-2">{staffVisible.map((member) => <li key={`${member.name}-${member.role}`} className="flex min-w-0 items-center justify-between gap-3 border-b border-white/[0.06] py-2.5 text-xs"><span className="min-w-0 break-words font-medium text-white/85">{member.url ? <a href={member.url} target="_blank" rel="noreferrer" className="hover:text-primary">{member.name}</a> : member.name}</span><span className="max-w-[48%] shrink-0 text-right text-white/45">{member.role}</span></li>)}</ul>
+      {staff.length > 10 && <button type="button" aria-expanded={staffExpanded} onClick={() => setStaffExpanded(!staffExpanded)} className="mt-3 text-xs font-semibold text-primary">{staffExpanded ? "Show less" : `Show all ${staff.length} credits`}</button>}
     </InfoSection>}
 
     {details?.characters.length ? <InfoSection title="Characters and voice actors"><AniListCharacters characters={details.characters} /></InfoSection> : null}
+
+    {(ratings.length || hasPositiveMetrics(anime) || rankings.length || topScores.length) ? <InfoSection title="Ratings and popularity">
+      {ratings.length > 0 && <dl className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">{ratings.map((rating) => <div key={rating.label} className="flex min-w-0 items-center justify-between gap-3 rounded-xl border border-white/[0.07] bg-white/[0.025] px-3 py-3"><dt className="text-xs text-white/55">{rating.label}</dt><dd className="inline-flex shrink-0 items-center gap-1.5 text-sm font-semibold text-white"><Star className="size-3.5 fill-primary text-primary" />{rating.value}</dd></div>)}</dl>}
+      <div className="mt-3 flex flex-wrap gap-x-6 gap-y-2 text-xs text-white/60">{positiveMetric(anime.aniListPopularity) && <span>Members <b className="ml-1 text-white">{formatCount(anime.aniListPopularity!)}</b></span>}{positiveMetric(anime.aniListFavourites) && <span>Favourites <b className="ml-1 text-white">{formatCount(anime.aniListFavourites!)}</b></span>}{positiveMetric(anime.aniListTrending) && <span>Trending <b className="ml-1 text-white">{formatCount(anime.aniListTrending!)}</b></span>}{positiveMetric(anime.popularityRank) && <span>Kitsu popularity <b className="ml-1 text-white">#{anime.popularityRank}</b></span>}{positiveMetric(anime.ratingRank) && <span>Kitsu rank <b className="ml-1 text-white">#{anime.ratingRank}</b></span>}</div>
+      {rankings.length > 0 && <ul className="mt-3 flex flex-wrap gap-2">{rankings.map((rank) => <li key={`${rank.type}-${rank.context}-${rank.rank}`} className="rounded-lg border border-white/[0.08] px-3 py-2 text-xs text-white/65"><span className="font-semibold text-primary">#{rank.rank}</span> {humanize(rank.type)} {rank.format ? `· ${humanize(rank.format)}` : ""} {rank.context ? `· ${rank.context}` : ""}</li>)}</ul>}
+      {topScores.length > 0 && <div className="mt-4"><h3 className="mb-2 text-xs font-semibold text-white/65">AniList score distribution</h3><div className="grid gap-1.5 sm:grid-cols-2">{topScores.slice().sort((a, b) => a.score - b.score).map((score) => <div key={score.score} className="grid grid-cols-[2.5rem_1fr_auto] items-center gap-2 text-[10px] text-white/55"><span>{(score.score / 10).toFixed(1)}</span><div className="h-1.5 overflow-hidden rounded-full bg-white/[0.08]" role="img" aria-label={`${formatCount(score.amount)} votes`}><div className="h-full rounded-full bg-primary/80" style={{ width: `${Math.max(3, score.amount / Math.max(...topScores.map((item) => item.amount)) * 100)}%` }} /></div><span className="tabular-nums">{formatCount(score.amount)}</span></div>)}</div></div>}
+    </InfoSection> : null}
 
     {(externalLinks.length > 0 || validText(anime.aniListUrl) || details?.trailer) && <InfoSection title="Additional information">
       <div className="flex flex-wrap gap-2">{validText(anime.aniListUrl) && <ExternalLink href={anime.aniListUrl} label="AniList" />}{externalLinks.map((link) => <ExternalLink key={`${link.site}-${link.url}`} href={link.url} label={link.site} />)}{details?.trailer && <ExternalLink href={details.trailer.url} label="Trailer" />}</div>
@@ -178,6 +190,14 @@ function InfoGrid({ rows }: { rows: Array<[string, string | number | undefined]>
 function ChipGroup({ title, values, primary = false }: { title: string; values: string[]; primary?: boolean }) { if (!values.length) return null; return <div className="mt-4 first:mt-0"><h3 className="mb-2 text-xs font-semibold text-white/50">{title}</h3><div className="flex flex-wrap gap-2">{values.map((value) => <span key={value} className={cn("rounded-full border px-3 py-1.5 text-xs", primary ? "border-primary/25 bg-primary/[0.08] text-white/85" : "border-white/[0.08] text-white/60")}>{value}</span>)}</div></div> }
 function ExternalLink({ href, label }: { href: string; label: string }) { if (!safeExternalUrl(href)) return null; return <a href={href} target="_blank" rel="noreferrer" className="rounded-full border border-white/10 px-3 py-1.5 text-xs text-white/65 transition-colors hover:border-primary/50 hover:text-primary">{label}</a> }
 function normalizeTitle(value: string) { return value.normalize("NFKD").replace(/[\u0300-\u036f]/g, "").toLowerCase().replace(/&/g, "and").replace(/[^\p{L}\p{N}]+/gu, "") }
+function hasValidTrailer(details: AniListDetails) {
+  const trailer = details.trailer
+  if (!trailer || trailer.site.toLowerCase() !== "youtube") return false
+  try {
+    const url = new URL(trailer.url)
+    return url.protocol === "https:" && url.hostname === "www.youtube.com" && url.pathname === "/watch" && /^[A-Za-z0-9_-]{11}$/.test(url.searchParams.get("v") ?? "")
+  } catch { return false }
+}
 function uniqueStrings(values: Array<string | undefined>): string[] { const seen = new Set<string>(); return values.flatMap((value) => { if (!validText(value)) return []; const clean = value.trim(); const key = normalizeTitle(clean); if (!key || seen.has(key)) return []; seen.add(key); return [clean] }) }
 function uniqueStudios<T extends { name: string; isMain: boolean }>(items: T[]): T[] { const seen = new Set<string>(); return items.filter((item) => { const key = normalizeTitle(item.name); if (!key || seen.has(key)) return false; seen.add(key); return true }) }
 function uniqueStaff<T extends { name: string; role: string }>(items: T[]): T[] { const seen = new Set<string>(); return items.filter((item) => { const key = `${normalizeTitle(item.name)}:${normalizeTitle(item.role)}`; if (seen.has(key)) return false; seen.add(key); return true }) }
