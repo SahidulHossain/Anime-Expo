@@ -72,15 +72,15 @@ export function AnimeDetailExperience({ anime, related }: { anime: AnimeDetail; 
 
   return <main className="overflow-x-clip bg-background pb-24 sm:pb-28">
     <section className="relative isolate overflow-hidden">
-      <div className="absolute inset-x-0 top-0 -z-10 h-[25rem] overflow-hidden sm:h-[31rem]">
-        {enriched.banner || enriched.poster ? <img src={enriched.banner || enriched.poster} alt="" aria-hidden className="h-full w-full scale-105 object-cover object-[50%_30%] opacity-45 blur-[1px] sm:object-center" /> : null}
-        <div className="absolute inset-0 bg-gradient-to-b from-black/35 via-black/70 to-background" />
-        <div className="absolute inset-0 bg-gradient-to-r from-black/80 via-black/25 to-black/65" />
-        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_18%_45%,rgba(153,27,27,0.24),transparent_55%)]" />
+      <div className="absolute inset-x-0 top-0 -z-10 h-[34rem] overflow-hidden sm:h-[42rem]">
+        {enriched.banner || enriched.poster ? <img src={enriched.banner || enriched.poster} alt="" aria-hidden className="h-full w-full object-cover object-[58%_center] opacity-85 sm:object-center" /> : null}
+        <div className="absolute inset-0 bg-gradient-to-b from-black/20 via-black/25 to-background" />
+        <div className="absolute inset-0 bg-gradient-to-r from-black/55 via-black/15 to-transparent" />
+        <div className="absolute inset-x-0 bottom-0 h-48 bg-gradient-to-b from-transparent to-background" />
       </div>
-      <div className="relative mx-auto max-w-7xl px-4 pb-2 pt-4 sm:pb-4 sm:pt-7">
+      <div className="relative mx-auto max-w-7xl px-4 pb-2 pt-5 sm:pb-4 sm:pt-7">
         <div className="mb-4 flex items-center justify-between sm:mb-6"><Link href="/" aria-label="Back home" className="rounded-full border border-white/15 bg-black/40 p-2.5 text-white transition-colors hover:border-primary"><ArrowLeft className="size-5" /></Link><ShareButton animeId={enriched.id} title={enriched.title} /></div>
-        <div className="details-hero flex min-w-0 items-end gap-3 sm:gap-7">
+        <div className="details-hero mt-24 flex min-w-0 items-end gap-3 sm:mt-40 sm:gap-7">
           <div className="w-[5.5rem] shrink-0 sm:w-40"><PosterImage src={enriched.poster} alt={enriched.title} className="aspect-[2/3] rounded-xl border border-white/15 shadow-2xl shadow-black/60" /></div>
           <div className="min-w-0 flex-1 pb-0.5 sm:pb-1"><p className="mb-1.5 text-[9px] font-bold uppercase tracking-[0.22em] text-primary sm:text-[11px]">Anime details</p><h1 className="text-balance text-xl font-black leading-tight tracking-tight sm:text-4xl md:text-5xl">{enriched.title}</h1>
             {validText(alternativeTitle) && <p className="mt-1 truncate text-xs text-white/60 sm:text-sm">{alternativeTitle}</p>}

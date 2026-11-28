@@ -99,11 +99,11 @@
 
 @keyframes hero-backdrop-drift {
   from { transform: scale(1); }
-  to { transform: scale(1.045); }
+  to { transform: scale(1.018); }
 }
 
 .hero-backdrop {
-  animation: hero-backdrop-drift 22s ease-in-out infinite alternate;
+  animation: hero-backdrop-drift 32s ease-in-out infinite alternate;
 }
 
 @keyframes details-panel-enter {

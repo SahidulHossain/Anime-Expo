@@ -40,17 +40,17 @@ export function Hero({ anime, slides = [anime] }: { anime: AnimeSummary; slides?
   }, [paused, slides.length])
 
   return (
-    <section className="relative isolate min-h-[min(660px,calc(100svh-4rem))] overflow-hidden border-b border-white/[0.06] sm:min-h-[min(700px,82svh)]" onMouseEnter={() => setPaused(true)} onMouseLeave={() => setPaused(false)}>
+    <section className="relative isolate min-h-[min(690px,calc(100svh-4rem))] overflow-hidden border-b border-white/[0.06] sm:min-h-[min(760px,86svh)]" onMouseEnter={() => setPaused(true)} onMouseLeave={() => setPaused(false)}>
       <div className="absolute inset-0 -z-10 bg-black">
         {slides.map((slide, slideIndex) => (
-          <img key={slide.id} src={slide.id === current.id ? displayBanner || displayPoster : slide.banner || slide.poster} alt="" aria-hidden loading={slideIndex === index ? "eager" : "lazy"} fetchPriority={slideIndex === index ? "high" : "auto"} className={`absolute inset-0 h-full w-full object-cover object-[62%_center] transition-opacity duration-700 sm:object-center ${slideIndex === index ? "hero-backdrop opacity-70" : "opacity-0"}`} />
+          <img key={slide.id} src={slide.id === current.id ? displayBanner || displayPoster : slide.banner || slide.poster} alt="" aria-hidden loading={slideIndex === index ? "eager" : "lazy"} fetchPriority={slideIndex === index ? "high" : "auto"} className={`absolute inset-0 h-full w-full object-cover object-[68%_center] transition-opacity duration-700 sm:object-center ${slideIndex === index ? "hero-backdrop opacity-90" : "opacity-0"}`} />
         ))}
-        <div className="absolute inset-0 bg-gradient-to-r from-black/95 via-black/70 to-black/15 sm:from-black/90 sm:via-black/55 sm:to-transparent" />
-        <div className="absolute inset-0 bg-gradient-to-t from-background via-background/20 to-black/15" />
-        <div className="absolute inset-x-0 top-0 h-28 bg-gradient-to-b from-background/45 to-transparent" />
+        <div className="absolute inset-0 bg-gradient-to-r from-black/80 via-black/38 to-transparent sm:from-black/75 sm:via-black/25 sm:to-transparent" />
+        <div className="absolute inset-0 bg-gradient-to-t from-background via-background/15 to-transparent" />
+        <div className="absolute inset-x-0 top-0 h-24 bg-gradient-to-b from-background/35 to-transparent" />
       </div>
 
-      <div className="mx-auto flex min-h-[min(660px,calc(100svh-4rem))] max-w-7xl flex-col justify-end px-4 pb-10 pt-16 sm:min-h-[min(700px,82svh)] sm:px-6 sm:pb-16">
+      <div className="mx-auto flex min-h-[min(690px,calc(100svh-4rem))] max-w-7xl flex-col justify-end px-4 pb-10 pt-16 sm:min-h-[min(760px,86svh)] sm:px-6 sm:pb-16">
         <div key={current.id} className="hero-copy mb-7 max-w-2xl sm:mb-8">
           <p className="mb-2.5 text-[10px] font-bold uppercase tracking-[0.3em] text-primary sm:text-xs">Featured anime</p>
           <h1 className="line-clamp-3 text-balance text-[2rem] font-black leading-[1.08] tracking-tight text-white sm:text-6xl">{displayTitle}</h1>
@@ -61,7 +61,7 @@ export function Hero({ anime, slides = [anime] }: { anime: AnimeSummary; slides?
             {displayEpisodes && <span>{displayEpisodes} episodes</span>}
           </div>
           {displayGenres.length > 0 && <p className="mt-3 text-sm text-white/70">{displayGenres.filter(Boolean).slice(0, 4).join("  •  ")}</p>}
-          {displayDescription && <p className="mt-3 line-clamp-1 max-w-xl text-xs leading-relaxed text-white/65 sm:line-clamp-2 sm:text-sm">{displayDescription}</p>}
+          {displayDescription && <p className="mt-3 line-clamp-2 max-w-xl text-xs leading-relaxed text-white/75 sm:line-clamp-2 sm:text-sm">{displayDescription}</p>}
           <div className="mt-5 flex flex-wrap gap-2 sm:mt-7 sm:gap-3">
             <Link href={`/anime/${current.id}`} className="inline-flex min-h-11 items-center gap-2 rounded-xl bg-primary px-4 py-2.5 text-sm font-bold text-primary-foreground shadow-[0_4px_20px_rgba(229,9,20,0.35)] transition-[transform,filter] duration-200 hover:-translate-y-0.5 hover:brightness-110 active:scale-[0.98] motion-reduce:transform-none"><Play className="size-4 fill-current" />Watch now</Link>
             <WatchlistButton anime={{ id: current.id, title: displayTitle, poster: displayPoster }} className="min-h-11 rounded-xl border-white/20 bg-white/10 px-4 py-2.5 text-sm text-white backdrop-blur-sm hover:bg-white/15" />
