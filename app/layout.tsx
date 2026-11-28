@@ -2,6 +2,7 @@ import { Analytics } from '@vercel/analytics/next'
 import type { Metadata, Viewport } from 'next'
 import { Inter } from 'next/font/google'
 import { SiteHeader } from '@/components/site-header'
+import { AppContentFrame } from '@/components/app-content-frame'
 import { BottomNav } from '@/components/bottom-nav'
 import { CONTACT_URL, LOGO_URL } from '@/lib/site'
 import './globals.css'
@@ -35,7 +36,7 @@ export default function RootLayout({
     <html lang="en" className="dark">
       <body className={`${inter.variable} font-sans antialiased`}>
         <SiteHeader />
-        <div className="min-h-[calc(100dvh-3.5rem)] overflow-x-clip pb-[calc(7rem+env(safe-area-inset-bottom))]">{children}</div>
+        <AppContentFrame>{children}</AppContentFrame>
         <BottomNav />
         <footer className="border-t border-border/60 px-4 py-8 pb-[calc(8rem+env(safe-area-inset-bottom))] text-center text-sm text-muted-foreground">
           <p>

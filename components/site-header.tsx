@@ -1,136 +1,85 @@
 "use client"
 
 import Link from "next/link"
-import { usePathname, useRouter } from "next/navigation"
-import { useState, type FormEvent } from "react"
-import { Search, Bookmark, History as HistoryIcon, Home, Menu, X, LayoutGrid, Send } from "lucide-react"
-import { cn } from "@/lib/utils"
-import { CONTACT_URL, LOGO_URL } from "@/lib/site"
+import { useEffect, useRef, useState } from "react"
+import { CalendarDays } from "lucide-react"
+import { LOGO_URL } from "@/lib/site"
 
-const NAV = [
-  { href: "/", label: "Home", icon: Home },
-  { href: "/browse", label: "Browse", icon: LayoutGrid },
-  { href: "/search", label: "Search", icon: Search },
-  { href: "/watchlist", label: "Watchlist", icon: Bookmark },
-  { href: "/history", label: "History", icon: HistoryIcon },
-]
+const SCROLL_THRESHOLD = 10
+const TOP_REVEAL_DISTANCE = 12
 
 export function SiteHeader() {
-  const pathname = usePathname()
-  const router = useRouter()
-  const [query, setQuery] = useState("")
-  const [open, setOpen] = useState(false)
+  const [visible, setVisible] = useState(true)
+  const visibleRef = useRef(true)
 
-  function submit(e: FormEvent) {
-    e.preventDefault()
-    const q = query.trim()
-    if (q) router.push(`/search?q=${encodeURIComponent(q)}`)
-  }
+  useEffect(() => {
+    const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)")
+    if (reducedMotion.matches) return
+
+    let previousY = Math.max(0, window.scrollY)
+    let direction = 0
+    let distance = 0
+    let frame = 0
+
+    const reveal = () => {
+      if (visibleRef.current) return
+      visibleRef.current = true
+      setVisible(true)
+    }
+
+    const onScroll = () => {
+      if (frame) return
+      frame = window.requestAnimationFrame(() => {
+        frame = 0
+        const currentY = Math.max(0, window.scrollY)
+        const delta = currentY - previousY
+        previousY = currentY
+
+        if (currentY <= TOP_REVEAL_DISTANCE) {
+          direction = 0
+          distance = 0
+          reveal()
+          return
+        }
+        if (Math.abs(delta) < 1) return
+
+        const nextDirection = delta > 0 ? 1 : -1
+        if (nextDirection !== direction) {
+          direction = nextDirection
+          distance = 0
+        }
+        distance += Math.abs(delta)
+        if (distance < SCROLL_THRESHOLD) return
+        distance = 0
+
+        const shouldShow = direction < 0
+        if (visibleRef.current !== shouldShow) {
+          visibleRef.current = shouldShow
+          setVisible(shouldShow)
+        }
+      })
+    }
+
+    window.addEventListener("scroll", onScroll, { passive: true })
+    return () => {
+      window.removeEventListener("scroll", onScroll)
+      if (frame) window.cancelAnimationFrame(frame)
+    }
+  }, [])
 
   return (
-    <header className="sticky top-0 z-40 border-b border-white/[0.06] bg-background/80 shadow-sm shadow-black/10 backdrop-blur-xl">
-      <div className="mx-auto flex h-14 max-w-7xl items-center gap-4 px-4">
-        <Link href="/" className="shrink-0" aria-label="AnimExpo home">
-          <img src={LOGO_URL} alt="AnimExpo" className="h-7 w-auto object-contain sm:h-8" />
+    <header
+      className={`fixed inset-x-0 top-[env(safe-area-inset-top)] z-40 px-3 transition-[transform,opacity] duration-300 ease-out motion-reduce:transition-none sm:px-5 ${visible ? "translate-y-0 opacity-100" : "pointer-events-none -translate-y-full opacity-0"}`}
+      aria-hidden={!visible}
+    >
+      <div className="mx-auto flex h-14 max-w-7xl items-center justify-between rounded-2xl border border-white/[0.09] bg-zinc-950/55 px-3 shadow-[0_8px_28px_rgba(0,0,0,.24),inset_0_1px_0_rgba(255,255,255,.045)] backdrop-blur-md sm:h-[60px] sm:px-5">
+        <Link href="/" tabIndex={visible ? 0 : -1} className="inline-flex min-h-11 min-w-0 items-center rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary" aria-label="AnimExpo home">
+          <img src={LOGO_URL} alt="AnimExpo" className="h-7 max-w-[min(58vw,200px)] object-contain object-left drop-shadow-[0_1px_5px_rgba(0,0,0,.55)] sm:h-8 sm:max-w-[240px]" />
         </Link>
-
-        <nav className="ml-4 hidden items-center gap-1 md:flex">
-          {NAV.map(({ href, label }) => {
-            const active = href === "/" ? pathname === "/" : pathname.startsWith(href)
-            return (
-              <Link
-                key={href}
-                href={href}
-                className={cn(
-                  "relative rounded-md px-3 py-2 text-sm font-medium transition-colors duration-200 after:absolute after:inset-x-3 after:-bottom-[17px] after:h-0.5 after:origin-center after:rounded-full after:bg-primary after:transition-transform after:duration-200 motion-reduce:after:transition-none",
-                  active ? "text-foreground after:scale-x-100" : "text-muted-foreground after:scale-x-0 hover:text-foreground", 
-                )}
-              >
-                {label}
-              </Link>
-            )
-          })}
-          <a
-            href={CONTACT_URL}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="rounded-md px-3 py-2 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground"
-          >
-            Contact Us
-          </a>
-        </nav>
-
-        <form onSubmit={submit} className="ml-auto hidden max-w-xs flex-1 md:block">
-          <div className="relative">
-            <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
-            <input
-              type="search"
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-              placeholder="Search anime..."
-              aria-label="Search anime"
-              className="h-10 w-full rounded-full border border-border bg-secondary/60 pl-9 pr-4 text-sm outline-none transition-colors placeholder:text-muted-foreground focus:border-primary/60"
-            />
-          </div>
-        </form>
-
-        <button
-          type="button"
-          onClick={() => setOpen((v) => !v)}
-          className="ml-auto inline-flex size-10 items-center justify-center rounded-md text-foreground md:hidden"
-          aria-label={open ? "Close menu" : "Open menu"}
-          aria-expanded={open}
-        >
-          {open ? <X className="size-5" /> : <Menu className="size-5" />}
-        </button>
+        <Link href="/schedule" tabIndex={visible ? 0 : -1} aria-label="Anime Schedule" title="Anime Schedule" className="inline-flex size-11 shrink-0 items-center justify-center rounded-full border border-white/[0.08] bg-white/[0.035] text-white/90 transition-[background-color,border-color,transform,color] hover:border-primary/45 hover:bg-white/[0.08] hover:text-white active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary">
+          <CalendarDays className="size-[19px]" strokeWidth={1.9} />
+        </Link>
       </div>
-
-      {open && (
-        <div className="border-t border-border/60 bg-background px-4 py-3 md:hidden">
-          <form onSubmit={submit} className="mb-3">
-            <div className="relative">
-              <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
-              <input
-                type="search"
-                value={query}
-                onChange={(e) => setQuery(e.target.value)}
-                placeholder="Search anime..."
-                aria-label="Search anime"
-                className="h-11 w-full rounded-full border border-border bg-secondary/60 pl-9 pr-4 text-sm outline-none placeholder:text-muted-foreground focus:border-primary/60"
-              />
-            </div>
-          </form>
-          <nav className="grid gap-1">
-            {NAV.map(({ href, label, icon: Icon }) => {
-              const active = href === "/" ? pathname === "/" : pathname.startsWith(href)
-              return (
-                <Link
-                  key={href}
-                  href={href}
-                  onClick={() => setOpen(false)}
-                  className={cn(
-                    "flex items-center gap-3 rounded-md px-3 py-2.5 text-sm font-medium",
-                    active ? "bg-secondary text-primary" : "text-muted-foreground hover:text-foreground",
-                  )}
-                >
-                  <Icon className="size-4" />
-                  {label}
-                </Link>
-              )
-            })}
-            <a
-              href={CONTACT_URL}
-              target="_blank"
-              rel="noopener noreferrer"
-              onClick={() => setOpen(false)}
-              className="flex items-center gap-3 rounded-md px-3 py-2.5 text-sm font-medium text-muted-foreground hover:text-foreground"
-            >
-              <Send className="size-4" />
-              Contact Us
-            </a>
-          </nav>
-        </div>
-      )}
     </header>
   )
 }
