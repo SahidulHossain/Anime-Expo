@@ -78,9 +78,9 @@ export function AnimeDetailExperience({ anime, related }: { anime: AnimeDetail; 
         <div className="absolute inset-0 bg-gradient-to-r from-black/55 via-black/15 to-transparent" />
         <div className="absolute inset-x-0 bottom-0 h-48 bg-gradient-to-b from-transparent to-background" />
       </div>
-      <div className="relative mx-auto max-w-7xl px-4 pb-2 pt-5 sm:pb-4 sm:pt-7">
-        <div className="mb-4 flex items-center justify-between sm:mb-6"><Link href="/" aria-label="Back home" className="rounded-full border border-white/15 bg-black/40 p-2.5 text-white transition-colors hover:border-primary"><ArrowLeft className="size-5" /></Link><ShareButton animeId={enriched.id} title={enriched.title} /></div>
-        <div className="details-hero mt-24 flex min-w-0 items-end gap-3 sm:mt-40 sm:gap-7">
+      <div className="relative mx-auto max-w-7xl px-4 pb-2 pt-[calc(var(--site-header-height)+env(safe-area-inset-top)+0.75rem)] sm:pb-4 sm:px-6">
+        <div className="mb-4 flex min-h-11 items-center justify-between sm:mb-6" role="group" aria-label="Anime actions"><Link href="/" aria-label="Back home" className="inline-flex size-11 items-center justify-center rounded-full border border-white/15 bg-black/40 text-white transition-colors hover:border-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"><ArrowLeft className="size-5" /></Link><ShareButton animeId={enriched.id} title={enriched.title} /></div>
+        <div className="details-hero mt-7 flex min-w-0 items-end gap-3 sm:mt-10 sm:gap-7">
           <div className="w-[5.5rem] shrink-0 sm:w-40"><PosterImage src={enriched.poster} alt={enriched.title} className="aspect-[2/3] rounded-xl border border-white/15 shadow-2xl shadow-black/60" /></div>
           <div className="min-w-0 flex-1 pb-0.5 sm:pb-1"><p className="mb-1.5 text-[9px] font-bold uppercase tracking-[0.22em] text-primary sm:text-[11px]">Anime details</p><h1 className="text-balance text-xl font-black leading-tight tracking-tight sm:text-4xl md:text-5xl">{enriched.title}</h1>
             {validText(alternativeTitle) && <p className="mt-1 truncate text-xs text-white/60 sm:text-sm">{alternativeTitle}</p>}

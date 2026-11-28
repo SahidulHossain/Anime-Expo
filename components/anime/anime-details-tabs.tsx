@@ -34,7 +34,7 @@ export function AnimeDetailsTabs({ anime, related, details, onRefreshAiring }: {
     <section className="mt-5 pb-12 sm:mt-7">
       <div className="flex justify-center overflow-x-auto pb-1" role="tablist" aria-label="Anime details">
         <div className="inline-flex min-w-max items-center gap-1 rounded-full border border-white/[0.08] bg-black/35 p-1 backdrop-blur-sm">
-          {tabs.map((tab) => <button key={tab} id={`${tab.toLowerCase()}-tab`} type="button" role="tab" aria-controls={`${tab.toLowerCase()}-panel`} aria-selected={active === tab} onClick={() => setActive(tab)} className={cn("min-h-9 rounded-full px-4 py-2 text-xs font-semibold transition-colors duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-black sm:px-5 sm:text-sm", active === tab ? "bg-white text-zinc-950" : "text-white/55 hover:text-white")}>{tab}</button>)}
+          {tabs.map((tab) => <button key={tab} id={`${tab.toLowerCase()}-tab`} type="button" role="tab" aria-controls={`${tab.toLowerCase()}-panel`} aria-selected={active === tab} onClick={() => setActive(tab)} className={cn("min-h-11 rounded-full px-4 py-2 text-xs font-semibold transition-colors duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-black sm:px-5 sm:text-sm", active === tab ? "bg-white text-zinc-950" : "text-white/55 hover:text-white")}>{tab}</button>)}
         </div>
       </div>
 

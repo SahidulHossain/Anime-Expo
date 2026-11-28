@@ -72,7 +72,7 @@ export function SiteHeader() {
       className={`fixed inset-x-0 top-[env(safe-area-inset-top)] z-40 px-3 transition-[transform,opacity] duration-300 ease-out motion-reduce:transition-none sm:px-5 ${visible ? "translate-y-0 opacity-100" : "pointer-events-none -translate-y-full opacity-0"}`}
       aria-hidden={!visible}
     >
-      <div className="mx-auto flex h-14 max-w-7xl items-center justify-between rounded-2xl border border-white/[0.09] bg-zinc-950/55 px-3 shadow-[0_8px_28px_rgba(0,0,0,.24),inset_0_1px_0_rgba(255,255,255,.045)] backdrop-blur-md sm:h-[60px] sm:px-5">
+      <div className="mx-auto flex h-[var(--site-header-height)] max-w-7xl items-center justify-between rounded-2xl border border-white/[0.12] bg-zinc-900/45 px-3 shadow-[0_8px_28px_rgba(0,0,0,.22),inset_0_1px_0_rgba(255,255,255,.08)] backdrop-blur-md sm:px-5">
         <Link href="/" tabIndex={visible ? 0 : -1} className="inline-flex min-h-11 min-w-0 items-center rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary" aria-label="AnimExpo home">
           <img src={LOGO_URL} alt="AnimExpo" className="h-7 max-w-[min(58vw,200px)] object-contain object-left drop-shadow-[0_1px_5px_rgba(0,0,0,.55)] sm:h-8 sm:max-w-[240px]" />
         </Link>
